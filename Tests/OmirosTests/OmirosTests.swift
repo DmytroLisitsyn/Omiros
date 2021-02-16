@@ -41,7 +41,7 @@ class OmirosTests: XCTestCase {
         let entity = Person()
 
         try omiros.save(entity)
-        
+
         let fetched = try omiros.fetchFirst(Person.self)
 
         XCTAssertEqual(entity.name, fetched?.name)
@@ -66,12 +66,128 @@ class OmirosTests: XCTestCase {
         for _ in 0..<10000 {
             entities.append(.init())
         }
+
         try omiros.save(entities)
 
         measure {
             let fetched = try? omiros.fetch(Person.self)
             XCTAssertEqual(entities.count, fetched?.count)
         }
+    }
+
+    func testFilteringPerformance() throws {
+        var entities: [Person] = []
+        for _ in 0..<10000 {
+            entities.append(.init())
+        }
+        for _ in 0..<100 {
+            entities.append(Person(name: "Jack", surname: "White"))
+            entities.append(Person(name: "Jack", surname: "Black"))
+            entities.append(Person(name: "Jack", surname: "Gray"))
+            entities.append(Person(name: "Peter", surname: "Parker"))
+        }
+        entities.append(Person(name: "Brandon", surname: "Smith"))
+
+        try omiros.save(entities)
+
+        measure {
+            let options = OmirosQueryOptions<Person>([
+                .equal(.name, "Jack"),
+                .any([
+                    .equal(.surname, "White"),
+                    .equal(.surname, "Black"),
+                ])
+            ])
+
+            let fetched = try? omiros.fetch(Person.self, with: options)
+            XCTAssertEqual(fetched?.count, 200)
+        }
+    }
+
+    func testOrderingAndPagination() throws {
+        var entities: [Person] = []
+
+        for _ in 0..<100 {
+            entities.append(Person(name: "Jack", surname: "White"))
+        }
+        for _ in 0..<100 {
+            entities.append(Person(name: "Jack", surname: "Black"))
+        }
+        for _ in 0..<100 {
+            entities.append(Person(name: "Peter", surname: "Parker"))
+        }
+        for _ in 0..<100 {
+            entities.append(Person(name: "Brandon", surname: "Smith"))
+        }
+
+        try omiros.save(entities)
+
+        var options = OmirosQueryOptions<Person>()
+        options.orderBy = [.name, .surname]
+        options.offset = 200
+        options.limit = 100
+
+        let fetched = try? omiros.fetch(Person.self, with: options)
+        XCTAssertEqual(fetched?.count, 100)
+
+        XCTAssertEqual(fetched?.first?.name, "Jack")
+        XCTAssertEqual(fetched?.first?.surname, "White")
+
+        XCTAssertEqual(fetched?.last?.name, "Jack")
+        XCTAssertEqual(fetched?.last?.surname, "White")
+    }
+
+    func testNotInQueryParameters() throws {
+        var entities: [Person] = []
+
+        for _ in 0..<10 {
+            entities.append(Person(name: "Jack", surname: "White"))
+        }
+        for _ in 0..<10 {
+            entities.append(Person(name: "Jack", surname: "Black"))
+        }
+        for _ in 0..<10 {
+            entities.append(Person(name: "Peter", surname: "Parker", height: 190))
+        }
+        for _ in 0..<10 {
+            entities.append(Person(name: "Rihanna"))
+        }
+        entities.append(Person(name: "Bree", surname: "Whale", height: 180))
+
+        try omiros.save(entities)
+
+        var options = OmirosQueryOptions<Person>(
+            .not(.equal(.name, "Jack")),
+            .not(.equal(.name, "Rihanna"))
+        )
+        var fetched = try? omiros.fetch(Person.self, with: options)
+
+        XCTAssertEqual(fetched?.count, 11)
+
+        options = OmirosQueryOptions<Person>(
+            .not(.all([
+                .equal(.name, "Jack"),
+                .equal(.surname, "Black")
+            ]))
+        )
+        fetched = try? omiros.fetch(Person.self, with: options)
+
+        XCTAssertEqual(fetched?.count, 31)
+
+        options = OmirosQueryOptions<Person>(.not(.equal(.surname, nil)))
+        fetched = try? omiros.fetch(Person.self, with: options)
+
+        XCTAssertEqual(fetched?.count, 31)
+
+        options = OmirosQueryOptions<Person>(.not(.greaterThanOrEqual(.height, 180)))
+        fetched = try? omiros.fetch(Person.self, with: options)
+
+        XCTAssertEqual(fetched?.count, 30)
+
+        options = OmirosQueryOptions<Person>(.not(.like(.surname, "Wh%")))
+        fetched = try? omiros.fetch(Person.self, with: options)
+
+        XCTAssertEqual(fetched?.count, 20)
     }
         
 }

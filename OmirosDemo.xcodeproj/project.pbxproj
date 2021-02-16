@@ -8,7 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		3857C23259CA4B24218A0AD1 /* Omirable.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3857C0776604B434AE8605B7 /* Omirable.swift */; };
-		3857C3AA0E192A529CD6E0FA /* OmirosQueryParameters.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3857CE89E7ECF3A19283268A /* OmirosQueryParameters.swift */; };
+		3857C3AA0E192A529CD6E0FA /* OmirosQueryOptions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3857CE89E7ECF3A19283268A /* OmirosQueryOptions.swift */; };
 		CD4A0D2124EE9D170022AFCE /* Omiros.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD4A0D2024EE9D170022AFCE /* Omiros.swift */; };
 		CD4A0D2324EE9DB00022AFCE /* SQLite.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD4A0D2224EE9DB00022AFCE /* SQLite.swift */; };
 		CD4A0D2A24EEAA390022AFCE /* Entities.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD4A0D2824EEAA340022AFCE /* Entities.swift */; };
@@ -64,7 +64,7 @@
 
 /* Begin PBXFileReference section */
 		3857C0776604B434AE8605B7 /* Omirable.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Omirable.swift; sourceTree = "<group>"; };
-		3857CE89E7ECF3A19283268A /* OmirosQueryParameters.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = OmirosQueryParameters.swift; sourceTree = "<group>"; };
+		3857CE89E7ECF3A19283268A /* OmirosQueryOptions.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = OmirosQueryOptions.swift; sourceTree = "<group>"; };
 		CD458E5E25CC454700D2B12E /* OmirosDemo.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = OmirosDemo.entitlements; sourceTree = "<group>"; };
 		CD4A0D2024EE9D170022AFCE /* Omiros.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Omiros.swift; sourceTree = "<group>"; };
 		CD4A0D2224EE9DB00022AFCE /* SQLite.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = SQLite.swift; sourceTree = "<group>"; };
@@ -147,7 +147,7 @@
 		CD802EAE24EE9BDC0072D65A /* Omiros */ = {
 			isa = PBXGroup;
 			children = (
-				3857CE89E7ECF3A19283268A /* OmirosQueryParameters.swift */,
+				3857CE89E7ECF3A19283268A /* OmirosQueryOptions.swift */,
 				3857C0776604B434AE8605B7 /* Omirable.swift */,
 				CD4A0D2024EE9D170022AFCE /* Omiros.swift */,
 				CD4A0D2224EE9DB00022AFCE /* SQLite.swift */,
@@ -327,7 +327,7 @@
 				CD4A0D2324EE9DB00022AFCE /* SQLite.swift in Sources */,
 				3857C23259CA4B24218A0AD1 /* Omirable.swift in Sources */,
 				CD7E583D25D863550015E268 /* SQLiteType.swift in Sources */,
-				3857C3AA0E192A529CD6E0FA /* OmirosQueryParameters.swift in Sources */,
+				3857C3AA0E192A529CD6E0FA /* OmirosQueryOptions.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -25,27 +25,40 @@
 import Foundation
 
 public protocol Omirable {
-    init(container: OmirosOutput)
-    func fill(container: OmirosInput)
+
+    associatedtype OmirosKey: CodingKey
+
+    init(container: OmirosOutput<Self>)
+    func fill(container: OmirosInput<Self>)
+
 }
 
-public final class OmirosInput {
+public final class OmirosInput<Entity: Omirable> {
 
     typealias Content = [String: SQLiteType]
 
     var content = Content()
 
-    public func set<T: SQLiteType>(_ value: T, for key: String) {
+    public subscript<Value: SQLiteType>(_ key: Entity.OmirosKey) -> Value? {
+        get { content[key.stringValue] as? Value }
+        set { content[key.stringValue] = newValue }
+    }
+    
+    public func set<Value: SQLiteType>(_ value: Value, for key: Entity.OmirosKey) {
+        set(value, for: key.stringValue)
+    }
+
+    public func set<Value: SQLiteType>(_ value: Value, for key: String) {
         content[key] = value
     }
 
-    public func fill<T: SQLiteType>(from field: OmirosField<T>) {
+    public func fill<Value: SQLiteType>(from field: OmirosField<Value>) {
         content[field.key] = field.wrappedValue
     }
 
 }
 
-public final class OmirosOutput {
+public final class OmirosOutput<Entity: Omirable> {
 
     private weak var statement: SQLite.Statement?
     private var indexPerColumnName: [String: Int32] = [:]
@@ -59,31 +72,43 @@ public final class OmirosOutput {
         }
     }
 
-    public func get<T: SQLiteType>(_ key: String) -> T {
-        return get(T.self, for: key)
+    public subscript<Value: SQLiteType>(_ key: Entity.OmirosKey) -> Value {
+        return get(key)
     }
 
-    public func get<T: SQLiteType>(_ type: T.Type, for key: String) -> T {
+    public func get<Value: SQLiteType>(_ key: Entity.OmirosKey) -> Value {
+        return get(Value.self, for: key)
+    }
+
+    public func get<Value: SQLiteType>(_ type: Value.Type, for key: Entity.OmirosKey) -> Value {
+        return get(type, for: key.stringValue)
+    }
+
+    public func get<Value: SQLiteType>(_ key: String) -> Value {
+        return get(Value.self, for: key)
+    }
+
+    public func get<Value: SQLiteType>(_ type: Value.Type, for key: String) -> Value {
         let index = indexPerColumnName[key]
-        let value = index.flatMap { statement?.column(at: $0, type: T.self) }
-        return value ?? T.default()
+        let value = index.flatMap { statement?.column(at: $0, type: Value.self) }
+        return value ?? Value.default()
     }
 
 }
 
 @propertyWrapper
-public struct OmirosField<T: SQLiteType>: CustomDebugStringConvertible {
+public struct OmirosField<Value: SQLiteType>: CustomDebugStringConvertible {
 
     public let key: String
 
-    public var wrappedValue: T
+    public var wrappedValue: Value
 
-    public init(_ key: String, initialValue: T = .default()) {
-        self.key = key
+    public init(_ key: CodingKey, initialValue: Value = .default()) {
+        self.key = key.stringValue
         self.wrappedValue = initialValue
     }
 
-    public mutating func fill(from container: OmirosOutput) {
+    public mutating func fill<Entity>(from container: OmirosOutput<Entity>) {
         wrappedValue = container.get(key)
     }
 
