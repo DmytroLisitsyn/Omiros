@@ -27,10 +27,17 @@ import Omiros
 
 struct Person: Omirable {
 
-    @OmirosField("name") var name: String
-    @OmirosField("surname") var surname: String?
-    @OmirosField("height") var height: Double
-    @OmirosField("dateOfBirth") var dateOfBirth: Date
+    enum OmirosKey: String, CodingKey {
+        case name
+        case surname
+        case height
+        case dateOfBirth
+    }
+
+    @OmirosField(OmirosKey.name) var name: String
+    @OmirosField(OmirosKey.surname) var surname: String?
+    @OmirosField(OmirosKey.height) var height: Double
+    @OmirosField(OmirosKey.dateOfBirth) var dateOfBirth: Date
 
     init(name: String = "John Doe", surname: String? = nil, height: Double = 172, dateOfBirth: Date = Date(timeIntervalSince1970: 30)) {
         self.height = height
@@ -39,7 +46,7 @@ struct Person: Omirable {
         self.dateOfBirth = dateOfBirth
     }
 
-    init(container: OmirosOutput) {
+    init(container: OmirosOutput<Person>) {
         self.init()
 
         _name.fill(from: container)
@@ -48,7 +55,7 @@ struct Person: Omirable {
         _dateOfBirth.fill(from: container)
     }
 
-    func fill(container: OmirosInput) {
+    func fill(container: OmirosInput<Person>) {
         container.fill(from: _name)
         container.fill(from: _surname)
         container.fill(from: _height)

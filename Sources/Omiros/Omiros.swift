@@ -32,13 +32,13 @@ public final class Omiros {
         self.name = name
     }
 
-    public func save<T: Omirable>(_ entity: T) throws {
+    public func save<Entity: Omirable>(_ entity: Entity) throws {
         try save([entity])
     }
 
-    public func save<T: Omirable>(_ entities: [T]) throws {
+    public func save<Entity: Omirable>(_ entities: [Entity]) throws {
         let db = try SQLite(named: name)
-        let entityName = self.entityName(T.self)
+        let entityName = self.entityName(Entity.self)
 
         try db.execute("CREATE TABLE IF NOT EXISTS \(entityName)(_id INTEGER PRIMARY KEY);")
 
@@ -52,7 +52,7 @@ public final class Omiros {
         try db.execute("BEGIN TRANSACTION;")
 
         for entity in entities {
-            let container = OmirosInput()
+            let container = OmirosInput<Entity>()
             entity.fill(container: container)
 
             var columnList: [String] = []
@@ -82,29 +82,29 @@ public final class Omiros {
         try db.execute("END TRANSACTION;")
     }
 
-    public func fetchFirst<T: Omirable>(_ type: T.Type = T.self, with parameters: OmirosQueryParameters = .init()) throws -> T? {
-        var parameters = parameters
-        parameters.limit = 1
+    public func fetchFirst<Entity: Omirable>(_ type: Entity.Type = Entity.self, with options: OmirosQueryOptions<Entity> = .init()) throws -> Entity? {
+        var options = options
+        options.limit = 1
 
-        let fetched = try fetch(T.self, with: parameters)
+        let fetched = try fetch(Entity.self, with: options)
         return fetched.first
     }
     
-    public func fetch<T: Omirable>(_ type: T.Type = T.self, with parameters: OmirosQueryParameters = .init()) throws -> [T] {
+    public func fetch<Entity: Omirable>(_ type: Entity.Type = Entity.self, with options: OmirosQueryOptions<Entity> = .init()) throws -> [Entity] {
         let db = try SQLite(named: name)
-        let entityName = self.entityName(T.self)
+        let entityName = self.entityName(Entity.self)
 
-        var entities: [T] = []
+        var entities: [Entity] = []
 
         guard try tableExists(db, entityName: entityName) else {
             return entities
         }
 
-        let statement = try db.prepare("SELECT * FROM \(entityName)\(parameters.sqlWhereClause());").step()
+        let statement = try db.prepare("SELECT * FROM \(entityName)\(options.sqlWhereClause());").step()
         while statement.hasMoreRows {
-            let container = OmirosOutput(statement)
+            let container = OmirosOutput<Entity>(statement)
 
-            let entity = T(container: container)
+            let entity = Entity(container: container)
             entities.append(entity)
 
             try statement.step()
@@ -113,15 +113,15 @@ public final class Omiros {
         return entities
     }
 
-    public func delete<T: Omirable>(_ type: T.Type = T.self, with parameters: OmirosQueryParameters = .init()) throws {
+    public func delete<Entity: Omirable>(_ type: Entity.Type = Entity.self, with options: OmirosQueryOptions<Entity> = .init()) throws {
         let db = try SQLite(named: name)
-        let entityName = self.entityName(T.self)
+        let entityName = self.entityName(Entity.self)
 
         guard try tableExists(db, entityName: entityName) else {
             return
         }
 
-        try db.execute("DELETE FROM \(entityName)\(parameters.sqlWhereClause());")
+        try db.execute("DELETE FROM \(entityName)\(options.sqlWhereClause());")
     }
 
     public func deleteAll() throws {
@@ -132,7 +132,7 @@ public final class Omiros {
 
 extension Omiros {
 
-    private func entityName<T>(_ entityType: T) -> String {
+    private func entityName<T>(_ entityType: T.Type) -> String {
         return "\(entityType)"
     }
 
