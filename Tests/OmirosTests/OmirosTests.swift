@@ -28,15 +28,15 @@ import XCTest
 class OmirosTests: XCTestCase {
 
     var omiros: Omiros!
-    
+
     override func setUpWithError() throws {
         omiros = Omiros(named: "MyStorage")
     }
-    
+
     override func tearDownWithError() throws {
         try omiros.deleteAll()
     }
-    
+
     func testFetchingAndSaving() throws {
         let entity = Person()
 
@@ -49,7 +49,7 @@ class OmirosTests: XCTestCase {
         XCTAssertEqual(entity.dateOfBirth, fetched?.dateOfBirth)
         XCTAssertEqual(entity.height, fetched?.height)
     }
-        
+
     func testSavingPerformance() throws {
         var entities: [Person] = []
         for _ in 0..<10000 {
@@ -60,7 +60,7 @@ class OmirosTests: XCTestCase {
             try? omiros.save(entities)
         }
     }
-    
+
     func testFetchingPerformance() throws {
         var entities: [Person] = []
         for _ in 0..<10000 {
@@ -95,7 +95,7 @@ class OmirosTests: XCTestCase {
                 .equal(.name, "Jack"),
                 .any([
                     .equal(.surname, "White"),
-                    .equal(.surname, "Black"),
+                    .equal(.surname, "Black")
                 ])
             ])
 
@@ -189,5 +189,5 @@ class OmirosTests: XCTestCase {
 
         XCTAssertEqual(fetched?.count, 20)
     }
-        
+
 }

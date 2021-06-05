@@ -188,6 +188,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = CD802EA224EE9B1E0072D65A /* Build configuration list for PBXNativeTarget "OmirosDemo" */;
 			buildPhases = (
+				CD624466266C30EE00D4D1E2 /* SwiftLint */,
 				CD802E7F24EE9B1B0072D65A /* Sources */,
 				CD802E8024EE9B1B0072D65A /* Frameworks */,
 				CD802E8124EE9B1B0072D65A /* Resources */,
@@ -308,6 +309,27 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		CD624466266C30EE00D4D1E2 /* SwiftLint */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = SwiftLint;
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "if which swiftlint >/dev/null; then\nswiftlint autocorrect && swiftlint\nelse\necho \"warning: SwiftLint not installed, download from https://github.com/realm/SwiftLint\"\nfi\n";
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		CD802E7F24EE9B1B0072D65A /* Sources */ = {

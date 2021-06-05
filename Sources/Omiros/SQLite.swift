@@ -42,9 +42,9 @@ public struct SQLiteError: Error, Equatable {
 }
 
 public final class SQLite {
-        
+
     let pointer: OpaquePointer
-    
+
     public init(named name: String) throws {
         let fileManager = FileManager.default
         let fileURL = try fileManager.url(for: .documentDirectory, in: .userDomainMask, appropriateFor: nil, create: false).appendingPathComponent("\(name).sqlite")
@@ -56,11 +56,11 @@ public final class SQLite {
 
         try processResult(result)
     }
-    
+
     deinit {
         sqlite3_close(pointer)
     }
-    
+
     public func prepare(_ query: String) throws -> Statement {
         try Statement(query, database: self)
     }
@@ -68,7 +68,7 @@ public final class SQLite {
     public func execute(_ query: String) throws {
         try prepare(query).step()
     }
-    
+
     public static func delete(named name: String) throws {
         let fileManager = FileManager.default
         let fileURL = try fileManager.url(for: .documentDirectory, in: .userDomainMask, appropriateFor: nil, create: false).appendingPathComponent("\(name).sqlite")
@@ -77,7 +77,7 @@ public final class SQLite {
             try fileManager.removeItem(atPath: fileURL.path)
         }
     }
-    
+
     private func processResult(_ result: Int32) throws {
         switch result {
         case SQLITE_ROW, SQLITE_DONE, SQLITE_OK:
@@ -88,21 +88,21 @@ public final class SQLite {
             throw SQLiteError(code: errorCode, message: message)
         }
     }
-    
+
 }
 
 extension SQLite {
-    
+
     public final class Statement {
-        
+
         let pointer: OpaquePointer
-        
+
         public var hasMoreRows = false
-        
+
         public var columnCount: Int32 {
             return sqlite3_data_count(pointer)
         }
-        
+
         private let database: SQLite
 
         init(_ query: String, database: SQLite) throws {
@@ -122,9 +122,9 @@ extension SQLite {
         @discardableResult
         public func step() throws -> Statement {
             let result = sqlite3_step(pointer)
-            
+
             hasMoreRows = (result == SQLITE_ROW)
-            
+
             try database.processResult(result)
             return self
         }
@@ -139,11 +139,11 @@ extension SQLite {
         public func column<T: SQLiteType>(at index: Int32, type: T.Type = T.self) -> T {
             return T.column(at: index, statement: self)
         }
-        
+
         public func columnName(at index: Int32) -> String {
             return sqlite3_column_name(pointer, index).flatMap({ String(cString: $0) })!
         }
-        
+
     }
-    
+
 }
