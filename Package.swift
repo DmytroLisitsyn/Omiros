@@ -9,7 +9,7 @@ let package = Package(
     products: [
         .library(
             name: "Omiros",
-            targets: ["Omiros"]),
+            targets: ["Omiros"])
     ],
     dependencies: [],
     targets: [
@@ -19,6 +19,6 @@ let package = Package(
             exclude: ["Info.plist"]),
         .testTarget(
             name: "OmirosTests",
-            dependencies: ["Omiros"]),
+            dependencies: ["Omiros"])
     ]
 )

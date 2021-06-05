@@ -42,7 +42,7 @@ extension Optional: SQLiteType where Wrapped: SQLiteType {
         return "NULL"
     }
 
-    public static func `default`() -> Optional<Wrapped> {
+    public static func `default`() -> Wrapped? {
         return nil
     }
 
@@ -55,7 +55,7 @@ extension Optional: SQLiteType where Wrapped: SQLiteType {
         }
     }
 
-    public static func column(at index: Int32, statement: SQLite.Statement) -> Optional<Wrapped> {
+    public static func column(at index: Int32, statement: SQLite.Statement) -> Wrapped? {
         if sqlite3_column_type(statement.pointer, index) != SQLITE_NULL {
             return Wrapped.column(at: index, statement: statement)
         } else {
@@ -156,7 +156,7 @@ extension Date: SQLiteType {
     }
 
     public static func column(at index: Int32, statement: SQLite.Statement) -> Date {
-        let timeIntervalSince1970 =  sqlite3_column_double(statement.pointer, index)
+        let timeIntervalSince1970 = sqlite3_column_double(statement.pointer, index)
         return Date(timeIntervalSince1970: timeIntervalSince1970)
     }
 

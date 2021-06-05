@@ -25,9 +25,9 @@
 import Foundation
 
 public final class Omiros {
-    
+
     public let name: String
-    
+
     public init(named name: String) {
         self.name = name
     }
@@ -78,7 +78,7 @@ public final class Omiros {
             }
             try statement.step()
         }
-        
+
         try db.execute("END TRANSACTION;")
     }
 
@@ -89,7 +89,7 @@ public final class Omiros {
         let fetched = try fetch(Entity.self, with: options)
         return fetched.first
     }
-    
+
     public func fetch<Entity: Omirable>(_ type: Entity.Type = Entity.self, with options: OmirosQueryOptions<Entity> = .init()) throws -> [Entity] {
         let db = try SQLite(named: name)
         let entityName = self.entityName(Entity.self)
@@ -127,7 +127,7 @@ public final class Omiros {
     public func deleteAll() throws {
         try SQLite.delete(named: name)
     }
-    
+
 }
 
 extension Omiros {

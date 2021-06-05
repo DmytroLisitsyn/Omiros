@@ -43,7 +43,7 @@ public final class OmirosInput<Entity: Omirable> {
         get { content[key.stringValue] as? Value }
         set { content[key.stringValue] = newValue }
     }
-    
+
     public func set<Value: SQLiteType>(_ value: Value, for key: Entity.OmirosKey) {
         set(value, for: key.stringValue)
     }
