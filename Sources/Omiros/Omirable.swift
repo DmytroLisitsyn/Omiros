@@ -63,6 +63,11 @@ public final class OmirosInput<Entity: Omirable> {
 
     var content = Content()
 
+    public subscript<Value: SQLiteType>(_ key: Entity.OmirosKey) -> Value? {
+        get { content[key.stringValue] as? Value }
+        set { content[key.stringValue] = newValue }
+    }
+
     public func fill<Value: SQLiteType>(from field: AnyOmirosField<Entity, Value>) {
         content[field.key] = field.wrappedValue
     }
@@ -85,6 +90,10 @@ public final class OmirosOutput<Entity: Omirable> {
         for (index, column) in columns.enumerated() {
             indexPerColumnName[column] = Int32(index)
         }
+    }
+
+    public subscript<Value: SQLiteType>(_ key: Entity.OmirosKey) -> Value {
+        return get(key)
     }
 
     public func get<Value: SQLiteType>(_ key: Entity.OmirosKey) -> Value {
