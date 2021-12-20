@@ -27,19 +27,19 @@ import Omiros
 
 struct Person: Omirable {
 
-    enum OmirosKey: String, CodingKey {
+    enum OmirosKey: CodingKey {
         case name
         case surname
         case height
         case dateOfBirth
     }
 
-    @OmirosField(OmirosKey.name) var name: String
-    @OmirosField(OmirosKey.surname) var surname: String?
-    @OmirosField(OmirosKey.height) var height: Double
-    @OmirosField(OmirosKey.dateOfBirth) var dateOfBirth: Date
+    @OmirosField(.name) var name: String
+    @OmirosField(.surname) var surname: String?
+    @OmirosField(.height) var height: Double
+    @OmirosField(.dateOfBirth) var dateOfBirth: Date
 
-    init(name: String = "John Doe", surname: String? = nil, height: Double = 172, dateOfBirth: Date = Date(timeIntervalSince1970: 30)) {
+    init(name: String = "John Doe", surname: String? = nil, height: Double = 172, dateOfBirth: Date = Date(timeIntervalSince1970: 0)) {
         self.height = height
         self.surname = surname
         self.name = name
@@ -60,6 +60,28 @@ struct Person: Omirable {
         container.fill(from: _surname)
         container.fill(from: _height)
         container.fill(from: _dateOfBirth)
+    }
+
+}
+
+struct Dog: Omirable {
+
+    enum OmirosKey: CodingKey {
+        case name
+    }
+
+    @OmirosField(.name) var name: String
+
+    init(name: String) {
+        self.name = name
+    }
+
+    init(container: OmirosOutput<Dog>) {
+        self.init(name: container.get(.name))
+    }
+
+    func fill(container: OmirosInput<Dog>) {
+        container.set(name, for: .name)
     }
 
 }
