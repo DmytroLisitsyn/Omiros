@@ -41,18 +41,19 @@ public final class Omiros {
 
         var entities = entities
         let entity = entities.removeLast()
-
         let container = OmirosInput<Entity>()
         entity.fill(container: container)
 
         let db = try SQLite(named: name)
+        try db.execute("BEGIN TRANSACTION;")
+
         try setupTable(with: container, in: db)
 
-        try db.execute("BEGIN TRANSACTION;")
         try insertEntity(entity, into: db)
         for entity in entities {
             try insertEntity(entity, into: db)
         }
+
         try db.execute("END TRANSACTION;")
     }
 
@@ -66,15 +67,12 @@ public final class Omiros {
 
     public func fetch<Entity: Omirable>(_ type: Entity.Type = Entity.self, with options: OmirosQueryOptions<Entity> = .init()) throws -> [Entity] {
         let db = try SQLite(named: name)
-        let entityName = self.entityName(Entity.self)
+
+        guard try tableExists(Entity.self, in: db) else { return [] }
 
         var entities: [Entity] = []
 
-        guard try tableExists(db, entityName: entityName) else {
-            return entities
-        }
-
-        let statement = try db.prepare("SELECT * FROM \(entityName)\(options.sqlWhereClause());").step()
+        let statement = try db.prepare("SELECT * FROM \(Entity.sqLiteName)\(options.sqlWhereClause());").step()
         while statement.hasMoreRows {
             let container = OmirosOutput<Entity>(statement)
 
@@ -89,13 +87,10 @@ public final class Omiros {
 
     public func delete<Entity: Omirable>(_ type: Entity.Type = Entity.self, with options: OmirosQueryOptions<Entity> = .init()) throws {
         let db = try SQLite(named: name)
-        let entityName = self.entityName(Entity.self)
 
-        guard try tableExists(db, entityName: entityName) else {
-            return
-        }
+        guard try tableExists(Entity.self, in: db) else { return }
 
-        try db.execute("DELETE FROM \(entityName)\(options.sqlWhereClause());")
+        try db.execute("DELETE FROM \(Entity.sqLiteName)\(options.sqlWhereClause());")
     }
 
     public func deleteAll() throws {
@@ -106,19 +101,16 @@ public final class Omiros {
 
 extension Omiros {
 
-    private func entityName<T>(_ entityType: T.Type) -> String {
-        return "\(entityType)"
-    }
-
-    private func tableExists(_ db: SQLite, entityName: String) throws -> Bool {
-        let statement = try db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='\(entityName)';").step()
+    private func tableExists<Entity: Omirable>(_ entity: Entity.Type, in db: SQLite) throws -> Bool {
+        let query = "SELECT name FROM sqlite_master WHERE type='table' AND name='\(Entity.sqLiteName)';"
+        let statement = try db.prepare(query).step()
         return statement.hasMoreRows
     }
 
     private func setupTable<Entity: Omirable>(with container: OmirosInput<Entity>, in db: SQLite) throws {
-        let entityName = self.entityName(Entity.self)
+        let entityName = Entity.sqLiteName
 
-        if try tableExists(db, entityName: entityName) {
+        if try tableExists(Entity.self, in: db) {
             var existingColumns: Set<String> = []
             let statement = try db.prepare("PRAGMA table_info(\(entityName))").step()
 
@@ -128,22 +120,35 @@ extension Omiros {
             }
 
             for (column, value) in container.content where !existingColumns.contains(column) {
-                let sqLiteType = type(of: value).sqLiteName
-                try db.execute("ALTER TABLE \(entityName) ADD \(column) \(sqLiteType);")
                 existingColumns.insert(column)
+
+                var sqLiteName = type(of: value).sqLiteName
+                try db.execute("ALTER TABLE \(entityName) ADD \(sqLiteName) \(sqLiteName);")
+
+                guard let relation = container.relations[column] else { continue }
+
+                sqLiteName = relation.type.sqLiteName
+                try db.execute("ALTER TABLE \(entityName) ADD FOREIGN KEY(\(column)) REFERENCES \(sqLiteName)(\(relation.key));")
             }
         } else {
-            let columns = container.content
-                .map({ "\($0) \(type(of: $1).sqLiteName)" })
-                .joined(separator: ",")
+            var columns: [String] = []
 
-            try db.execute("CREATE TABLE \(entityName)(\(columns));")
+            for (key, sqlType) in container.content {
+                let sqLiteName = type(of: sqlType).sqLiteName
+                columns.append("\(key) \(sqLiteName)")
+            }
+
+            for (key, relation) in container.relations {
+                let sqLiteName = relation.type.sqLiteName
+                columns.append("FOREIGN KEY(\(key)) REFERENCES \(sqLiteName)(\(relation.key))")
+            }
+
+            let description = columns.joined(separator: ",")
+            try db.execute("CREATE TABLE \(entityName)(\(description));")
         }
     }
 
     private func insertEntity<Entity: Omirable>(_ entity: Entity, into db: SQLite) throws {
-        let entityName = self.entityName(Entity.self)
-
         let container = OmirosInput<Entity>()
         entity.fill(container: container)
 
@@ -157,11 +162,12 @@ extension Omiros {
 
         let columnString = columnList.joined(separator: ",")
         let formatString = Array(repeating: "?", count: columnList.count).joined(separator: ",")
+        let statement = try db.prepare("INSERT INTO \(Entity.sqLiteName)(\(columnString)) VALUES(\(formatString));")
 
-        let statement = try db.prepare("INSERT INTO \(entityName)(\(columnString)) VALUES(\(formatString));")
         for (index, value) in valueList.enumerated() {
             try statement.bind(value, at: Int32(index + 1))
         }
+
         try statement.step()
     }
 

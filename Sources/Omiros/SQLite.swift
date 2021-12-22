@@ -44,17 +44,20 @@ public struct SQLiteError: Error, Equatable {
 public final class SQLite {
 
     let pointer: OpaquePointer
+    let name: String
 
     public init(named name: String) throws {
+        self.name = name
+
         let fileManager = FileManager.default
         let fileURL = try fileManager.url(for: .documentDirectory, in: .userDomainMask, appropriateFor: nil, create: false).appendingPathComponent("\(name).sqlite")
 
         var pointer: OpaquePointer!
         let result = sqlite3_open(fileURL.path, &pointer)
-
         self.pointer = pointer
 
         try processResult(result)
+        try execute("PRAGMA foreign_keys=ON;")
     }
 
     deinit {
@@ -95,15 +98,14 @@ extension SQLite {
 
     public final class Statement {
 
-        let pointer: OpaquePointer
-
         public var hasMoreRows = false
 
         public var columnCount: Int32 {
             return sqlite3_data_count(pointer)
         }
 
-        private let database: SQLite
+        let pointer: OpaquePointer
+        let database: SQLite
 
         init(_ query: String, database: SQLite) throws {
             var pointer: OpaquePointer?
@@ -122,9 +124,7 @@ extension SQLite {
         @discardableResult
         public func step() throws -> Statement {
             let result = sqlite3_step(pointer)
-
             hasMoreRows = (result == SQLITE_ROW)
-
             try database.processResult(result)
             return self
         }

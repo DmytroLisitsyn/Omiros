@@ -22,6 +22,8 @@
 		CD802EBF24EE9BDC0072D65A /* Omiros.h in Headers */ = {isa = PBXBuildFile; fileRef = CD802EAF24EE9BDC0072D65A /* Omiros.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		CD802EC224EE9BDC0072D65A /* Omiros.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = CD802EAD24EE9BDC0072D65A /* Omiros.framework */; };
 		CD802EC324EE9BDC0072D65A /* Omiros.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = CD802EAD24EE9BDC0072D65A /* Omiros.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		CD86115727716AD4009F11E5 /* OmirosRelation.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD86115627716AD4009F11E5 /* OmirosRelation.swift */; };
+		CD86115927718419009F11E5 /* Entities.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD86115827718419009F11E5 /* Entities.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -82,6 +84,8 @@
 		CD802EB524EE9BDC0072D65A /* OmirosTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = OmirosTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		CD802EBC24EE9BDC0072D65A /* OmirosTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OmirosTests.swift; sourceTree = "<group>"; };
 		CD802EBE24EE9BDC0072D65A /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		CD86115627716AD4009F11E5 /* OmirosRelation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OmirosRelation.swift; sourceTree = "<group>"; };
+		CD86115827718419009F11E5 /* Entities.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Entities.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -136,6 +140,7 @@
 			children = (
 				CD458E5E25CC454700D2B12E /* OmirosDemo.entitlements */,
 				CD802E8624EE9B1B0072D65A /* AppDelegate.swift */,
+				CD86115827718419009F11E5 /* Entities.swift */,
 				CD802E8A24EE9B1B0072D65A /* ViewController.swift */,
 				CD802E8C24EE9B1B0072D65A /* Main.storyboard */,
 				CD802E8F24EE9B1E0072D65A /* Assets.xcassets */,
@@ -148,6 +153,7 @@
 			isa = PBXGroup;
 			children = (
 				3857CE89E7ECF3A19283268A /* OmirosQueryOptions.swift */,
+				CD86115627716AD4009F11E5 /* OmirosRelation.swift */,
 				3857C0776604B434AE8605B7 /* Omirable.swift */,
 				CD4A0D2024EE9D170022AFCE /* Omiros.swift */,
 				CD4A0D2224EE9DB00022AFCE /* SQLite.swift */,
@@ -336,6 +342,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				CD86115927718419009F11E5 /* Entities.swift in Sources */,
 				CD802E8B24EE9B1B0072D65A /* ViewController.swift in Sources */,
 				CD802E8724EE9B1B0072D65A /* AppDelegate.swift in Sources */,
 			);
@@ -345,6 +352,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				CD86115727716AD4009F11E5 /* OmirosRelation.swift in Sources */,
 				CD4A0D2124EE9D170022AFCE /* Omiros.swift in Sources */,
 				CD4A0D2324EE9DB00022AFCE /* SQLite.swift in Sources */,
 				3857C23259CA4B24218A0AD1 /* Omirable.swift in Sources */,
