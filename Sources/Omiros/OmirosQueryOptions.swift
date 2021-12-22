@@ -92,20 +92,20 @@ public struct OmirosQueryOptions<T: Omirable> {
         switch condition {
         case .equal(let key, let value):
             if let value = value {
-                return "\(key.stringValue) = \(value.sqLiteString())"
+                return "\(key.stringValue) = \(value.sqLiteValue)"
             } else {
                 return "\(key.stringValue) IS NULL"
             }
         case .greaterThan(let key, let value):
-            return "\(key.stringValue) > \(value.sqLiteString())"
+            return "\(key.stringValue) > \(value.sqLiteValue)"
         case .lessThan(let key, let value):
-            return "\(key.stringValue) < \(value.sqLiteString())"
+            return "\(key.stringValue) < \(value.sqLiteValue)"
         case .greaterThanOrEqual(let key, let value):
-            return "\(key.stringValue) >= \(value.sqLiteString())"
+            return "\(key.stringValue) >= \(value.sqLiteValue)"
         case .lessThanOrEqual(let key, let value):
-            return "\(key.stringValue) <= \(value.sqLiteString())"
+            return "\(key.stringValue) <= \(value.sqLiteValue)"
         case .like(let key, let value):
-            return "\(key.stringValue) LIKE \(value.sqLiteString())"
+            return "\(key.stringValue) LIKE \(value.sqLiteValue)"
         case .and(let lhs, let rhs):
             return sqlWhereClause(from: .all([lhs, rhs]))
         case .or(let lhs, let rhs):
@@ -125,7 +125,7 @@ public struct OmirosQueryOptions<T: Omirable> {
         switch condition {
         case .equal(let key, let value):
             if let value = value {
-                return "\(key.stringValue) != \(value.sqLiteString())"
+                return "\(key.stringValue) != \(value.sqLiteValue)"
             } else {
                 return "\(key.stringValue) IS NOT NULL"
             }
@@ -138,7 +138,7 @@ public struct OmirosQueryOptions<T: Omirable> {
         case .lessThanOrEqual(let key, let value):
             return sqlWhereClause(from: .greaterThan(key, value))
         case .like(let key, let value):
-            return "\(key.stringValue) NOT LIKE \(value.sqLiteString())"
+            return "\(key.stringValue) NOT LIKE \(value.sqLiteValue)"
         case .and(let lhs, let rhs):
             return sqlWhereClause(from: .not(.all([lhs, rhs])))
         case .or(let lhs, let rhs):

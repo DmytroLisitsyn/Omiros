@@ -28,11 +28,11 @@ import SQLite3
 public protocol SQLiteType {
 
     static var sqLiteName: String { get }
+    var sqLiteValue: String { get }
 
-    static func `default`() -> Self
+    init()
     func bind(at index: Int32, statement: SQLite.Statement) -> Int32
     static func column(at index: Int32, statement: SQLite.Statement) -> Self
-    func sqLiteString() -> String
 
 }
 
@@ -42,8 +42,12 @@ extension Optional: SQLiteType where Wrapped: SQLiteType {
         return "NULL"
     }
 
-    public static func `default`() -> Wrapped? {
-        return nil
+    public var sqLiteValue: String {
+        return "NULL"
+    }
+
+    public init() {
+        self = nil
     }
 
     public func bind(at index: Int32, statement: SQLite.Statement) -> Int32 {
@@ -63,10 +67,6 @@ extension Optional: SQLiteType where Wrapped: SQLiteType {
         }
     }
 
-    public func sqLiteString() -> String {
-        return "NULL"
-    }
-
 }
 
 extension Int: SQLiteType {
@@ -75,8 +75,8 @@ extension Int: SQLiteType {
         return "INTEGER"
     }
 
-    public static func `default`() -> Int {
-        return .init()
+    public var sqLiteValue: String {
+        return "\(self)"
     }
 
     public func bind(at index: Int32, statement: SQLite.Statement) -> Int32 {
@@ -87,10 +87,6 @@ extension Int: SQLiteType {
         return Int(sqlite3_column_int64(statement.pointer, index))
     }
 
-    public func sqLiteString() -> String {
-        return "\(self)"
-    }
-
 }
 
 extension Double: SQLiteType {
@@ -99,8 +95,8 @@ extension Double: SQLiteType {
         return "REAL"
     }
 
-    public static func `default`() -> Double {
-        return .init()
+    public var sqLiteValue: String {
+        return "\(self)"
     }
 
     public func bind(at index: Int32, statement: SQLite.Statement) -> Int32 {
@@ -111,10 +107,6 @@ extension Double: SQLiteType {
         return sqlite3_column_double(statement.pointer, index)
     }
 
-    public func sqLiteString() -> String {
-        return "\(self)"
-    }
-
 }
 
 extension String: SQLiteType {
@@ -123,8 +115,8 @@ extension String: SQLiteType {
         return "TEXT"
     }
 
-    public static func `default`() -> String {
-        return .init()
+    public var sqLiteValue: String {
+        return "'\(self)'"
     }
 
     public func bind(at index: Int32, statement: SQLite.Statement) -> Int32 {
@@ -135,10 +127,6 @@ extension String: SQLiteType {
         return sqlite3_column_text(statement.pointer, index).flatMap({ String(cString: $0) }) ?? ""
     }
 
-    public func sqLiteString() -> String {
-        return "'\(self)'"
-    }
-
 }
 
 extension Date: SQLiteType {
@@ -147,8 +135,8 @@ extension Date: SQLiteType {
         return "REAL"
     }
 
-    public static func `default`() -> Date {
-        return .init()
+    public var sqLiteValue: String {
+        return "\(timeIntervalSince1970)"
     }
 
     public func bind(at index: Int32, statement: SQLite.Statement) -> Int32 {
@@ -160,8 +148,29 @@ extension Date: SQLiteType {
         return Date(timeIntervalSince1970: timeIntervalSince1970)
     }
 
-    public func sqLiteString() -> String {
-        return "\(timeIntervalSince1970)"
+}
+
+extension Omirable {
+
+    public static var sqLiteName: String {
+        return "\(Self.self)"
+    }
+
+    public var sqLiteValue: String {
+        return ""
+    }
+
+    public init() {
+        let container = OmirosOutput<Self>(nil)
+        self.init(container: container)
+    }
+
+    public func bind(at index: Int32, statement: SQLite.Statement) -> Int32 {
+        return SQLITE_OK
+    }
+
+    public static func column(at index: Int32, statement: SQLite.Statement) -> Self {
+        fatalError()
     }
 
 }

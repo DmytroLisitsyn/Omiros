@@ -1,5 +1,5 @@
 //
-//  OmirosDemo
+//  Omiros
 //
 //  Copyright (C) 2021 Dmytro Lisitsyn
 //
@@ -22,29 +22,21 @@
 //  SOFTWARE.
 //
 
-import UIKit
-import Omiros
+import Foundation
 
-class ViewController: UIViewController {
+public protocol AnyOmirosRelation {
+    var key: String { get }
+    var type: SQLiteType.Type { get }
+}
 
-    override func viewDidLoad() {
-        super.viewDidLoad()
+public struct OmirosRelation<Entity: Omirable>: AnyOmirosRelation {
 
-        let omiros = Omiros(named: "Default1")
-        let person = Person()
+    public let key: String
+    public let type: SQLiteType.Type
 
-        do {
-            try omiros.save(person)
-        } catch {
-            print(error)
-        }
-
-        do {
-            let dogs = try omiros.fetch(Dog.self)
-            print(dogs)
-        } catch {
-            print(error)
-        }
+    public init(_ key: Entity.OmirosKey) {
+        self.key = key.stringValue
+        self.type = Entity.self
     }
 
 }

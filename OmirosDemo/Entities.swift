@@ -1,5 +1,5 @@
 //
-//  OmirosTests
+//  OmirosDemo
 //
 //  Copyright (C) 2021 Dmytro Lisitsyn
 //
@@ -41,7 +41,8 @@ struct Person: Omirable {
     @OmirosField(.surname) var surname: String?
     @OmirosField(.height) var height: Double
     @OmirosField(.dateOfBirth) var dateOfBirth: Date
-    @OmirosField(.dog) var dog: Dog
+
+    @OmirosField(.dog) var dog: Dog?
 
     init(id: String = UUID().uuidString, name: String = "John Doe", surname: String? = nil, height: Double = 172, dateOfBirth: Date = Date(timeIntervalSince1970: 0)) {
         self.id = id
@@ -60,6 +61,7 @@ struct Person: Omirable {
         _surname.fill(from: container)
         _height.fill(from: container)
         _dateOfBirth.fill(from: container)
+        _dog.fill(from: container)
     }
 
     func fill(container: OmirosInput<Person>) {
