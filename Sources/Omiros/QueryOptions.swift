@@ -24,7 +24,16 @@
 
 import Foundation
 
-public struct OmirosQueryOptions<T: Omirable> {
+public protocol AnyOmirosQueryOptions {
+
+    var offset: Int { get set }
+    var limit: Int { get set }
+
+    func sqlWhereClause() -> String
+
+}
+
+public struct OmirosQueryOptions<T: Omirable>: AnyOmirosQueryOptions {
 
     public indirect enum Condition {
         case equal(_ key: T.OmirosKey, _ value: SQLiteType?)
@@ -56,7 +65,7 @@ public struct OmirosQueryOptions<T: Omirable> {
         self.limit = limit
     }
 
-    func sqlWhereClause() -> String {
+    public func sqlWhereClause() -> String {
         var subquery = ""
 
         if conditions.count > 0 {

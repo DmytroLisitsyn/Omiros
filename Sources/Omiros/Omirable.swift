@@ -24,7 +24,20 @@
 
 import Foundation
 
-public protocol Omirable: SQLiteType {
+public protocol AnyOmirable {
+
+    static var omirosName: String { get }
+
+    init()
+    init(with options: AnyOmirosQueryOptions, db: SQLite) throws
+
+    static func isSetup(in db: SQLite) throws -> Bool
+    static func setup(in db: SQLite) throws
+    func save(in db: SQLite) throws
+
+}
+
+public protocol Omirable: AnyOmirable {
 
     associatedtype OmirosKey: CodingKey
 
@@ -35,87 +48,170 @@ public protocol Omirable: SQLiteType {
 
 }
 
-@propertyWrapper
-public struct _OmirosField<Entity: Omirable, Value: SQLiteType>: CustomDebugStringConvertible {
+extension Omirable {
 
-    public let key: String
-
-    public var wrappedValue: Value
-
-    public init(_ key: Entity.OmirosKey, initialValue: Value = .init()) {
-        self.key = key.stringValue
-        self.wrappedValue = initialValue
+    public static var omirosName: String {
+        return "\(self)"
     }
 
-    public mutating func fill<Entity>(from container: OmirosOutput<Entity>) {
-        wrappedValue = container.get(Value.self, for: key)
+    public init() {
+        let container = OmirosOutput<Self>(nil)
+        self.init(container: container)
     }
 
-    public var debugDescription: String {
-        return "\(wrappedValue)"
+    public init(with options: AnyOmirosQueryOptions, db: SQLite) throws {
+        let entity: Self? = try .init(with: options, db: db)
+        self = entity ?? .init()
     }
 
-}
-
-public final class OmirosInput<Entity: Omirable> {
-
-    var content: [String: SQLiteType] = [:]
-    var relations: [String: AnyOmirosRelation] = [:]
-
-    public subscript<Value: SQLiteType>(_ key: Entity.OmirosKey) -> Value? {
-        get { content[key.stringValue] as? Value }
-        set { content[key.stringValue] = newValue }
+    public static func isSetup(in db: SQLite) throws -> Bool {
+        let query = "SELECT name FROM sqlite_master WHERE type='table' AND name='\(omirosName)';"
+        let statement = try db.prepare(query).step()
+        return statement.hasMoreRows
     }
 
-    public func fill<Value: SQLiteType>(from field: _OmirosField<Entity, Value>) {
-        content[field.key] = field.wrappedValue
-    }
+    public static func setup(in db: SQLite) throws {
+        let container = OmirosInput<Self>()
+        self.init().fill(container: container)
 
-    public func set<Value: SQLiteType>(_ value: Value, for key: Entity.OmirosKey) {
-        content[key.stringValue] = value
-    }
+        if try isSetup(in: db) {
+            var existingColumns: Set<String> = []
 
-    public func set<Value: SQLiteType, Related: Omirable>(_ value: Value, for key: Entity.OmirosKey, as relation: OmirosRelation<Related>) {
-        content[key.stringValue] = value
-        relations[key.stringValue] = relation
-    }
+            let statement = try db.prepare("PRAGMA table_info(\(omirosName))").step()
+            while statement.hasMoreRows {
+                existingColumns.insert(String.column(at: 1, statement: statement))
+                try statement.step()
+            }
 
-}
+            for (column, value) in container.content where !existingColumns.contains(column) {
+                existingColumns.insert(column)
 
-public final class OmirosOutput<Entity: Omirable> {
+                let sqLiteName = type(of: value).sqLiteName
+                try db.execute("ALTER TABLE \(omirosName) ADD \(column) \(sqLiteName);")
 
-    private weak var statement: SQLite.Statement?
-    private var indexPerColumnName: [String: Int32] = [:]
+                guard let relation = container.relations[column] else { continue }
 
-    init(_ statement: SQLite.Statement?) {
-        self.statement = statement
+                try db.execute("ALTER TABLE \(omirosName) ADD FOREIGN KEY(\(column)) REFERENCES \(relation.type.omirosName)(\(relation.key));")
+            }
+        } else {
+            var columns: [String] = []
 
-        guard let statement = statement else { return }
+            for (key, sqlType) in container.content {
+                var typeDescription = type(of: sqlType).sqLiteName
 
-        let columns = (0..<statement.columnCount).map(statement.columnName)
+                if container.primaryKey == key {
+                    typeDescription += " PRIMARY KEY"
+                }
 
-        for (index, column) in columns.enumerated() {
-            indexPerColumnName[column] = Int32(index)
+                columns.append("\(key) \(typeDescription)")
+            }
+
+            for (key, relation) in container.relations {
+                columns.append("FOREIGN KEY(\(key)) REFERENCES \(relation.type.omirosName)(\(relation.key))")
+            }
+
+            let description = columns.joined(separator: ",")
+            try db.execute("CREATE TABLE \(omirosName)(\(description));")
         }
     }
 
-    public subscript<Value: SQLiteType>(_ key: Entity.OmirosKey) -> Value {
-        return get(key)
+    public func save(in db: SQLite) throws {
+        let container = OmirosInput<Self>()
+        fill(container: container)
+
+        let columnString = container.content.keys.joined(separator: ",")
+        let formatString = Array(repeating: "?", count: container.content.count).joined(separator: ",")
+
+        let statement = try db.prepare("INSERT INTO \(Self.omirosName)(\(columnString)) VALUES(\(formatString));")
+        for (index, value) in container.content.values.enumerated() {
+            try statement.bind(value, at: Int32(index + 1))
+        }
+        try statement.step()
+
+        for element in container.enclosed.values {
+            try type(of: element).setup(in: db)
+            try element.save(in: db)
+        }
     }
 
-    public func get<Value: SQLiteType>(_ key: Entity.OmirosKey) -> Value {
-        return get(Value.self, for: key)
+}
+
+extension Optional: AnyOmirable where Wrapped: Omirable {
+
+    public static var omirosName: String {
+        return Wrapped.omirosName
     }
 
-    public func get<Value: SQLiteType>(_ type: Value.Type, for key: Entity.OmirosKey) -> Value {
-        return get(type, for: key.stringValue)
+    public init() {
+        self = nil
     }
 
-    func get<Value: SQLiteType>(_ type: Value.Type, for key: String) -> Value {
-        if let index = indexPerColumnName[key], let statement = statement {
-            return statement.column(at: index, type: Value.self)
-        } else {
-            return Value.init()
+    public init(with options: AnyOmirosQueryOptions, db: SQLite) throws {
+        var options = options
+        options.limit = 1
+
+        let entities = try [Wrapped].init(with: options, db: db)
+        self = entities.first
+    }
+
+    public static func isSetup(in db: SQLite) throws -> Bool {
+        return try Wrapped.isSetup(in: db)
+    }
+
+    public static func setup(in db: SQLite) throws {
+        try Wrapped.setup(in: db)
+    }
+
+    public func save(in db: SQLite) throws {
+        switch self {
+        case .some(let value):
+            try value.save(in: db)
+        case .none:
+            break
+        }
+    }
+
+}
+
+extension Array: AnyOmirable where Element: Omirable {
+
+    public static var omirosName: String {
+        return Element.omirosName
+    }
+
+    public init(with options: AnyOmirosQueryOptions, db: SQLite) throws {
+        guard try Element.isSetup(in: db) else {
+            self = .init()
+            return
+        }
+
+        var entities: [Element] = []
+
+        let query = "SELECT * FROM \(Element.omirosName)\(options.sqlWhereClause());"
+        let statement = try db.prepare(query).step()
+
+        while statement.hasMoreRows {
+            let container = OmirosOutput<Element>(statement)
+            let entity = Element(container: container)
+            entities.append(entity)
+
+            try statement.step()
+        }
+
+        self = entities
+    }
+
+    public static func isSetup(in db: SQLite) throws -> Bool {
+        return try Element.isSetup(in: db)
+    }
+
+    public static func setup(in db: SQLite) throws {
+        try Element.setup(in: db)
+    }
+
+    public func save(in db: SQLite) throws {
+        for element in self {
+            try element.save(in: db)
         }
     }
 
