@@ -42,7 +42,7 @@ class OmirosTests: XCTestCase {
 
         try omiros.save(entity)
 
-        let fetched = try omiros.fetchFirst(Person.self)
+        let fetched = try omiros.fetchOne(Person.self)
 
         XCTAssertEqual(entity.name, fetched?.name)
         XCTAssertEqual(entity.surname, fetched?.surname)
@@ -188,6 +188,42 @@ class OmirosTests: XCTestCase {
         fetched = try? omiros.fetch(Person.self, with: options)
 
         XCTAssertEqual(fetched?.count, 20)
+    }
+
+    func testSavingAndFetchingWithRelations() throws {
+        var entity = Owner()
+        entity.dogs.append(Dog(ownerID: entity.id, name: "Ebony"))
+        entity.dogs.append(Dog(ownerID: entity.id, name: "Ivory"))
+
+        try omiros.save(entity)
+
+        let fetched: Owner? = try omiros.fetchOne()
+
+        XCTAssertEqual(entity.id, fetched?.id)
+        XCTAssertEqual(entity.dogs.count, fetched?.dogs.count)
+        XCTAssertEqual(entity.dogs.first?.ownerID, fetched?.dogs.first?.ownerID)
+        XCTAssertEqual(entity.dogs.first?.name, fetched?.dogs.first?.name)
+        XCTAssertEqual(entity.dogs.last?.ownerID, fetched?.dogs.last?.ownerID)
+        XCTAssertEqual(entity.dogs.last?.name, fetched?.dogs.last?.name)
+    }
+
+    func testSavingAndDeletingWithRelations() throws {
+        var entity = Owner()
+        entity.dogs.append(Dog(ownerID: entity.id, name: "Ebony"))
+        entity.dogs.append(Dog(ownerID: entity.id, name: "Ivory"))
+
+        try omiros.save(entity)
+
+        var fetchedDogs: [Dog] = try omiros.fetch()
+        XCTAssertEqual(fetchedDogs.count, entity.dogs.count)
+
+        try omiros.delete(Owner.self)
+
+        let fetchedOwner: Owner? = try omiros.fetchOne()
+        XCTAssertNil(fetchedOwner)
+
+        fetchedDogs = try omiros.fetch()
+        XCTAssertTrue(fetchedDogs.isEmpty)
     }
 
 }

@@ -30,7 +30,7 @@ public struct SQLiteError: Error, Equatable {
     public let code: Int
     public let message: String
 
-    public init(code: Int, message: String) {
+    public init(code: Int = 0, message: String = "Generic error") {
         self.code = code
         self.message = message
     }

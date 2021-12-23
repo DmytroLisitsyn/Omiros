@@ -33,7 +33,6 @@ struct Person: Omirable {
         case surname
         case height
         case dateOfBirth
-        case dog
     }
 
     @OmirosField(.id) var id: String
@@ -41,7 +40,6 @@ struct Person: Omirable {
     @OmirosField(.surname) var surname: String?
     @OmirosField(.height) var height: Double
     @OmirosField(.dateOfBirth) var dateOfBirth: Date
-    @OmirosField(.dog) var dog: Dog
 
     init(id: String = UUID().uuidString, name: String = "John Doe", surname: String? = nil, height: Double = 172, dateOfBirth: Date = Date(timeIntervalSince1970: 0)) {
         self.id = id
@@ -49,7 +47,6 @@ struct Person: Omirable {
         self.surname = surname
         self.height = height
         self.dateOfBirth = dateOfBirth
-        self.dog = Dog(personID: id, name: "Pup")
     }
 
     init(container: OmirosOutput<Person>) {
@@ -68,7 +65,36 @@ struct Person: Omirable {
         container.fill(from: _surname)
         container.fill(from: _height)
         container.fill(from: _dateOfBirth)
-        container.fill(from: _dog)
+    }
+
+}
+
+struct Owner: Omirable {
+
+    enum OmirosKey: CodingKey {
+        case id
+        case dogs
+    }
+
+    @OmirosField(.id) var id: String
+
+    var dogs: [Dog] = []
+
+    init(id: String = UUID().uuidString) {
+        self.id = id
+    }
+
+    init(container: OmirosOutput<Owner>) {
+        self.init(id: container[.id])
+
+        dogs = container.get(with: .init(.equal(.ownerID, id)))
+    }
+
+    func fill(container: OmirosInput<Owner>) {
+        container.fill(from: _id)
+
+        container.setPrimaryKey(.id)
+        container.set(dogs)
     }
 
 }
@@ -76,26 +102,25 @@ struct Person: Omirable {
 struct Dog: Omirable {
 
     enum OmirosKey: CodingKey {
-        case personID
+        case ownerID
         case name
     }
 
-    @OmirosField(.personID) var personID: String
+    @OmirosField(.ownerID) var ownerID: String
     @OmirosField(.name) var name: String
 
-    init(personID: String, name: String) {
-        self.personID = personID
+    init(ownerID: String, name: String) {
+        self.ownerID = ownerID
         self.name = name
     }
 
     init(container: OmirosOutput<Dog>) {
-        self.init(personID: container[.personID], name: container[.name])
+        self.init(ownerID: container[.ownerID], name: container[.name])
     }
 
     func fill(container: OmirosInput<Dog>) {
-        container[.name] = name
-
-        container.set(personID, for: .personID, as: OmirosRelation<Person>(.id))
+        container.fill(from: _name)
+        container.fill(from: _ownerID, as: OmirosRelation<Owner>(.id))
     }
 
 }

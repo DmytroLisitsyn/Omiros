@@ -79,19 +79,22 @@ extension Omirable {
 
             let statement = try db.prepare("PRAGMA table_info(\(omirosName))").step()
             while statement.hasMoreRows {
-                existingColumns.insert(String.column(at: 1, statement: statement))
+                let column = String.column(at: 1, statement: statement)
+                existingColumns.insert(column)
+
                 try statement.step()
             }
 
-            for (column, value) in container.content where !existingColumns.contains(column) {
-                existingColumns.insert(column)
+            for (column, value) in container.content {
+                if !existingColumns.contains(column) {
+                    existingColumns.insert(column)
 
-                let sqLiteName = type(of: value).sqLiteName
-                try db.execute("ALTER TABLE \(omirosName) ADD \(column) \(sqLiteName);")
+                    try db.execute("ALTER TABLE \(omirosName) ADD \(column) \(type(of: value).sqLiteName);")
 
-                guard let relation = container.relations[column] else { continue }
-
-                try db.execute("ALTER TABLE \(omirosName) ADD FOREIGN KEY(\(column)) REFERENCES \(relation.type.omirosName)(\(relation.key));")
+                    if let relation = container.relations[column] {
+                        try db.execute("ALTER TABLE \(omirosName) ADD FOREIGN KEY(\(column)) REFERENCES \(relation.type.omirosName)(\(relation.key)) ON DELETE CASCADE;")
+                    }
+                }
             }
         } else {
             var columns: [String] = []
@@ -99,7 +102,7 @@ extension Omirable {
             for (key, sqlType) in container.content {
                 var typeDescription = type(of: sqlType).sqLiteName
 
-                if container.primaryKey == key {
+                if container.primaryKeys.contains(key) {
                     typeDescription += " PRIMARY KEY"
                 }
 
@@ -107,7 +110,7 @@ extension Omirable {
             }
 
             for (key, relation) in container.relations {
-                columns.append("FOREIGN KEY(\(key)) REFERENCES \(relation.type.omirosName)(\(relation.key))")
+                columns.append("FOREIGN KEY(\(key)) REFERENCES \(relation.type.omirosName)(\(relation.key)) ON DELETE CASCADE")
             }
 
             let description = columns.joined(separator: ",")
@@ -147,11 +150,23 @@ extension Optional: AnyOmirable where Wrapped: Omirable {
     }
 
     public init(with options: AnyOmirosQueryOptions, db: SQLite) throws {
+        guard try Wrapped.isSetup(in: db) else {
+            self = nil
+            return
+        }
+
         var options = options
         options.limit = 1
 
-        let entities = try [Wrapped].init(with: options, db: db)
-        self = entities.first
+        let query = "SELECT * FROM \(Wrapped.omirosName)\(options.sqlWhereClause());"
+        let statement = try db.prepare(query).step()
+
+        if statement.hasMoreRows {
+            let container = OmirosOutput<Wrapped>(statement)
+            self = Wrapped(container: container)
+        } else {
+            self = nil
+        }
     }
 
     public static func isSetup(in db: SQLite) throws -> Bool {
@@ -181,24 +196,27 @@ extension Array: AnyOmirable where Element: Omirable {
 
     public init(with options: AnyOmirosQueryOptions, db: SQLite) throws {
         guard try Element.isSetup(in: db) else {
-            self = .init()
+            self.init()
             return
         }
 
-        var entities: [Element] = []
+        var query = "SELECT COUNT(*) FROM \(Element.omirosName)\(options.sqlWhereClause());"
+        var statement = try db.prepare(query).step()
+        let count: Int = statement.column(at: 0)
 
-        let query = "SELECT * FROM \(Element.omirosName)\(options.sqlWhereClause());"
-        let statement = try db.prepare(query).step()
+        self.init()
+        reserveCapacity(count)
+
+        query = "SELECT * FROM \(Element.omirosName)\(options.sqlWhereClause());"
+        statement = try db.prepare(query).step()
 
         while statement.hasMoreRows {
             let container = OmirosOutput<Element>(statement)
             let entity = Element(container: container)
-            entities.append(entity)
+            append(entity)
 
             try statement.step()
         }
-
-        self = entities
     }
 
     public static func isSetup(in db: SQLite) throws -> Bool {
