@@ -29,22 +29,7 @@ class ViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-
-        let omiros = Omiros(named: "Default1")
-        let person = Person()
-
-        do {
-            try omiros.save(person)
-        } catch {
-            print(error)
-        }
-
-        do {
-            let dogs = try omiros.fetch(Dog.self)
-            print(dogs)
-        } catch {
-            print(error)
-        }
+        
     }
 
 }

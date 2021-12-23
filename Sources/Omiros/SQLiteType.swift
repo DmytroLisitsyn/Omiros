@@ -149,28 +149,3 @@ extension Date: SQLiteType {
     }
 
 }
-
-extension Omirable {
-
-    public static var sqLiteName: String {
-        return "\(Self.self)"
-    }
-
-    public var sqLiteValue: String {
-        return ""
-    }
-
-    public init() {
-        let container = OmirosOutput<Self>(nil)
-        self.init(container: container)
-    }
-
-    public func bind(at index: Int32, statement: SQLite.Statement) -> Int32 {
-        return SQLITE_OK
-    }
-
-    public static func column(at index: Int32, statement: SQLite.Statement) -> Self {
-        fatalError()
-    }
-
-}
