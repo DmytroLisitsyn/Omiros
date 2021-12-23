@@ -64,13 +64,13 @@ public struct _OmirosField<Entity: Omirable, T: SQLiteType>: CustomDebugStringCo
 
 public final class OmirosInput<Entity: Omirable> {
 
-    var primaryKey: String?
+    var primaryKeys: Set<String> = []
     var content: [String: SQLiteType] = [:]
     var relations: [String: AnyOmirosRelation] = [:]
     var enclosed: [String: AnyOmirable] = [:]
 
     public func setPrimaryKey(_ key: Entity.OmirosKey) {
-        primaryKey = key.stringValue
+        primaryKeys.insert(key.stringValue)
     }
 
     public subscript<T: SQLiteType>(_ key: Entity.OmirosKey) -> T? {
@@ -131,39 +131,30 @@ public final class OmirosOutput<Entity: Omirable> {
         return statement.column(at: index, type: T.self)
     }
 
-    public func get<T: Omirable>(where key: T.OmirosKey, equals value: SQLiteType) -> T {
-        guard let statement = statement else {
-            return .init()
-        }
-
+    public func get<T: Omirable>(with options: OmirosQueryOptions<T>) -> T {
         do {
-            let options = OmirosQueryOptions<T>(.equal(key, value))
+            guard let statement = statement else { throw SQLiteError() }
+
             return try .init(with: options, db: statement.database)
         } catch {
             return .init()
         }
     }
 
-    public func get<T: Omirable>(where key: T.OmirosKey, equals value: SQLiteType) -> T? {
-        guard let statement = statement else {
-            return nil
-        }
-
+    public func get<T: Omirable>(with options: OmirosQueryOptions<T>) -> T? {
         do {
-            let options = OmirosQueryOptions<T>(.equal(key, value))
+            guard let statement = statement else { throw SQLiteError() }
+
             return try .init(with: options, db: statement.database)
         } catch {
             return nil
         }
     }
 
-    public func get<T: Omirable>(where key: T.OmirosKey, equals value: SQLiteType) -> [T] {
-        guard let statement = statement else {
-            return []
-        }
-
+    public func get<T: Omirable>(with options: OmirosQueryOptions<T>) -> [T] {
         do {
-            let options = OmirosQueryOptions<T>(.equal(key, value))
+            guard let statement = statement else { throw SQLiteError() }
+
             return try .init(with: options, db: statement.database)
         } catch {
             return []

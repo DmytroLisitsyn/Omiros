@@ -69,6 +69,34 @@ extension Optional: SQLiteType where Wrapped: SQLiteType {
 
 }
 
+extension Bool: SQLiteType {
+
+    public static var sqLiteName: String {
+        return "INTEGER"
+    }
+
+    public var sqLiteValue: String {
+        return "\(int32)"
+    }
+
+    public func bind(at index: Int32, statement: SQLite.Statement) -> Int32 {
+        return sqlite3_bind_int(statement.pointer, index, int32)
+    }
+
+    public static func column(at index: Int32, statement: SQLite.Statement) -> Bool {
+        return Bool(sqlite3_column_int(statement.pointer, index))
+    }
+
+    private init(_ value: Int32) {
+        self = value != 0
+    }
+
+    private var int32: Int32 {
+        return self ? 1 : 0
+    }
+
+}
+
 extension Int: SQLiteType {
 
     public static var sqLiteName: String {
