@@ -49,18 +49,23 @@ public struct OmirosQueryOptions<T: Omirable>: AnyOmirosQueryOptions {
         case not(Condition)
     }
 
+    public enum Order {
+        case ascending([T.OmirosKey])
+        case descending([T.OmirosKey])
+    }
+
     public var conditions: [Condition]
-    public var orderBy: [T.OmirosKey]
+    public var order: Order
     public var offset: Int
     public var limit: Int
 
-    public init(_ conditions: Condition..., orderBy: [T.OmirosKey] = [], offset: Int = 0, limit: Int = 0) {
-        self.init(conditions, orderBy: orderBy, offset: offset, limit: limit)
+    public init(_ conditions: Condition..., order: Order = .ascending([]), offset: Int = 0, limit: Int = 0) {
+        self.init(conditions, order: order, offset: offset, limit: limit)
     }
 
-    public init(_ conditions: [Condition], orderBy: [T.OmirosKey] = [], offset: Int = 0, limit: Int = 0) {
+    public init(_ conditions: [Condition], order: Order = .ascending([]), offset: Int = 0, limit: Int = 0) {
         self.conditions = conditions
-        self.orderBy = orderBy
+        self.order = order
         self.offset = offset
         self.limit = limit
     }
@@ -73,9 +78,21 @@ public struct OmirosQueryOptions<T: Omirable>: AnyOmirosQueryOptions {
             subquery += " WHERE \(clause)"
         }
 
-        if orderBy.count > 0 {
-            let clause = orderBy.map({ $0.stringValue }).joined(separator: ",")
-            subquery += " ORDER BY \(clause)"
+        var orderConstraints: [T.OmirosKey]
+        var orderDirection: String
+
+        switch order {
+        case .ascending(let constraints):
+            orderConstraints = constraints
+            orderDirection = "ASC"
+        case .descending(let constraints):
+            orderConstraints = constraints
+            orderDirection = "DESC"
+        }
+
+        if orderConstraints.count > 0 {
+            let clause = orderConstraints.map({ $0.stringValue }).joined(separator: ",")
+            subquery += " ORDER BY \(clause) \(orderDirection)"
         }
 
         if limit > 0 {

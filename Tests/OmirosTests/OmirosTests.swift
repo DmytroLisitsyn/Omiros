@@ -123,7 +123,7 @@ class OmirosTests: XCTestCase {
         try omiros.save(entities)
 
         var options = OmirosQueryOptions<Person>()
-        options.orderBy = [.name, .surname]
+        options.order = .ascending([.name, .surname])
         options.offset = 200
         options.limit = 100
 
