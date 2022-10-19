@@ -85,15 +85,13 @@ extension Omirable {
                 try statement.step()
             }
 
-            for (column, value) in container.content {
-                if !existingColumns.contains(column) {
-                    existingColumns.insert(column)
+            for (column, value) in container.content where !existingColumns.contains(column) {
+                existingColumns.insert(column)
 
-                    try db.execute("ALTER TABLE \(omirosName) ADD \(column) \(type(of: value).sqLiteName);")
+                try db.execute("ALTER TABLE \(omirosName) ADD \(column) \(type(of: value).sqLiteName);")
 
-                    if let relation = container.relations[column] {
-                        try db.execute("ALTER TABLE \(omirosName) ADD FOREIGN KEY(\(column)) REFERENCES \(relation.type.omirosName)(\(relation.key)) ON DELETE CASCADE;")
-                    }
+                if let relation = container.relations[column] {
+                    try db.execute("ALTER TABLE \(omirosName) ADD FOREIGN KEY(\(column)) REFERENCES \(relation.type.omirosName)(\(relation.key)) ON DELETE CASCADE;")
                 }
             }
         } else {

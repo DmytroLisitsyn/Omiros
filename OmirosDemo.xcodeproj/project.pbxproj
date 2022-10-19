@@ -83,7 +83,7 @@
 		CD802EB024EE9BDC0072D65A /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		CD802EB524EE9BDC0072D65A /* OmirosTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = OmirosTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		CD802EBC24EE9BDC0072D65A /* OmirosTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OmirosTests.swift; sourceTree = "<group>"; };
-		CD802EBE24EE9BDC0072D65A /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		CDC7624F2900A1C700D4B91A /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -167,7 +167,7 @@
 			children = (
 				CD4A0D2824EEAA340022AFCE /* Entities.swift */,
 				CD802EBC24EE9BDC0072D65A /* OmirosTests.swift */,
-				CD802EBE24EE9BDC0072D65A /* Info.plist */,
+				CDC7624F2900A1C700D4B91A /* Info.plist */,
 			);
 			name = OmirosTests;
 			path = Tests/OmirosTests;
@@ -191,7 +191,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = CD802EA224EE9B1E0072D65A /* Build configuration list for PBXNativeTarget "OmirosDemo" */;
 			buildPhases = (
-				CD624466266C30EE00D4D1E2 /* SwiftLint */,
+				CD624466266C30EE00D4D1E2 /* Script - SwiftLint */,
 				CD802E7F24EE9B1B0072D65A /* Sources */,
 				CD802E8024EE9B1B0072D65A /* Frameworks */,
 				CD802E8124EE9B1B0072D65A /* Resources */,
@@ -314,7 +314,7 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
-		CD624466266C30EE00D4D1E2 /* SwiftLint */ = {
+		CD624466266C30EE00D4D1E2 /* Script - SwiftLint */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -323,14 +323,14 @@
 			);
 			inputPaths = (
 			);
-			name = SwiftLint;
+			name = "Script - SwiftLint";
 			outputFileListPaths = (
 			);
 			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "if which swiftlint >/dev/null; then\nswiftlint autocorrect && swiftlint\nelse\necho \"warning: SwiftLint not installed, download from https://github.com/realm/SwiftLint\"\nfi\n";
+			shellScript = "if which swiftlint >/dev/null; then\nswiftlint --fix && swiftlint\nelse\necho \"warning: SwiftLint not installed, download from https://github.com/realm/SwiftLint\"\nfi\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
