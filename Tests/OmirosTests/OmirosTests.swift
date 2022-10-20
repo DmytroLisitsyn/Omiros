@@ -52,7 +52,7 @@ class OmirosTests: XCTestCase {
 
     func testSavingPerformance() throws {
         var entities: [Person] = []
-        for _ in 0..<10000 {
+        for _ in 0..<1000 {
             entities.append(.init())
         }
 
@@ -63,7 +63,7 @@ class OmirosTests: XCTestCase {
 
     func testFetchingPerformance() throws {
         var entities: [Person] = []
-        for _ in 0..<10000 {
+        for _ in 0..<1000 {
             entities.append(.init())
         }
 
@@ -77,7 +77,7 @@ class OmirosTests: XCTestCase {
 
     func testFilteringPerformance() throws {
         var entities: [Person] = []
-        for _ in 0..<10000 {
+        for _ in 0..<1000 {
             entities.append(.init())
         }
         for _ in 0..<100 {
@@ -87,6 +87,8 @@ class OmirosTests: XCTestCase {
             entities.append(Person(name: "Peter", surname: "Parker"))
         }
         entities.append(Person(name: "Brandon", surname: "Smith"))
+
+        entities.shuffle()
 
         try omiros.save(entities)
 
@@ -137,7 +139,7 @@ class OmirosTests: XCTestCase {
         XCTAssertEqual(fetched?.last?.surname, "White")
     }
 
-    func testNotInQueryParameters() throws {
+    func testNotInQueryParameters() async throws {
         var entities: [Person] = []
 
         for _ in 0..<10 {
@@ -154,13 +156,13 @@ class OmirosTests: XCTestCase {
         }
         entities.append(Person(name: "Bree", surname: "Whale", height: 180))
 
-        try omiros.save(entities)
+        try await omiros.save(entities)
 
         var options = OmirosQueryOptions<Person>(
             .not(.equal(.name, "Jack")),
             .not(.equal(.name, "Rihanna"))
         )
-        var fetched = try? omiros.fetch(Person.self, with: options)
+        var fetched = try? await omiros.fetch(Person.self, with: options)
 
         XCTAssertEqual(fetched?.count, 11)
 
@@ -170,34 +172,34 @@ class OmirosTests: XCTestCase {
                 .equal(.surname, "Black")
             ]))
         )
-        fetched = try? omiros.fetch(Person.self, with: options)
+        fetched = try? await omiros.fetch(Person.self, with: options)
 
         XCTAssertEqual(fetched?.count, 31)
 
         options = OmirosQueryOptions<Person>(.not(.equal(.surname, nil)))
-        fetched = try? omiros.fetch(Person.self, with: options)
+        fetched = try? await omiros.fetch(Person.self, with: options)
 
         XCTAssertEqual(fetched?.count, 31)
 
         options = OmirosQueryOptions<Person>(.not(.greaterThanOrEqual(.height, 180)))
-        fetched = try? omiros.fetch(Person.self, with: options)
+        fetched = try? await omiros.fetch(Person.self, with: options)
 
         XCTAssertEqual(fetched?.count, 30)
 
         options = OmirosQueryOptions<Person>(.not(.like(.surname, "Wh%")))
-        fetched = try? omiros.fetch(Person.self, with: options)
+        fetched = try? await omiros.fetch(Person.self, with: options)
 
         XCTAssertEqual(fetched?.count, 20)
     }
 
-    func testSavingAndFetchingWithRelations() throws {
+    func testSavingAndFetchingWithRelations() async throws {
         var entity = Owner()
         entity.dogs.append(Dog(ownerID: entity.id, name: "Ebony"))
         entity.dogs.append(Dog(ownerID: entity.id, name: "Ivory"))
 
-        try omiros.save(entity)
+        try await omiros.save(entity)
 
-        let fetched: Owner? = try omiros.fetchOne()
+        let fetched: Owner? = try await omiros.fetchOne()
 
         XCTAssertEqual(entity.id, fetched?.id)
         XCTAssertEqual(entity.dogs.count, fetched?.dogs.count)
@@ -207,22 +209,22 @@ class OmirosTests: XCTestCase {
         XCTAssertEqual(entity.dogs.last?.name, fetched?.dogs.last?.name)
     }
 
-    func testSavingAndDeletingWithRelations() throws {
+    func testSavingAndDeletingWithRelations() async throws {
         var entity = Owner()
         entity.dogs.append(Dog(ownerID: entity.id, name: "Ebony"))
         entity.dogs.append(Dog(ownerID: entity.id, name: "Ivory"))
 
-        try omiros.save(entity)
+        try await omiros.save(entity)
 
-        var fetchedDogs: [Dog] = try omiros.fetch()
+        var fetchedDogs: [Dog] = try await omiros.fetch()
         XCTAssertEqual(fetchedDogs.count, entity.dogs.count)
 
-        try omiros.delete(Owner.self)
+        try await omiros.delete(Owner.self)
 
-        let fetchedOwner: Owner? = try omiros.fetchOne()
+        let fetchedOwner: Owner? = try await omiros.fetchOne()
         XCTAssertNil(fetchedOwner)
 
-        fetchedDogs = try omiros.fetch()
+        fetchedDogs = try await omiros.fetch()
         XCTAssertTrue(fetchedDogs.isEmpty)
     }
 

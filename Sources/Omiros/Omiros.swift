@@ -23,6 +23,7 @@
 //
 
 import Foundation
+import Combine
 
 public final class Omiros {
 
@@ -32,44 +33,80 @@ public final class Omiros {
         self.name = name
     }
 
-    public func save<Entity: Omirable>(_ entity: Entity) throws {
+    public func save<T: Omirable>(_ entity: T) async throws {
+        try await Task {
+            try save(entity)
+        }.value
+    }
+
+    public func save<T: Omirable>(_ entity: T) throws {
         let db = try SQLite(named: name)
         try db.execute("BEGIN TRANSACTION;")
 
-        try Entity.setup(in: db)
+        try T.setup(in: db)
         try entity.save(in: db)
 
         try db.execute("END TRANSACTION;")
     }
 
-    public func save<Entity: Omirable>(_ list: [Entity]) throws {
+    public func save<T: Omirable>(_ list: [T]) async throws {
+        try await Task {
+            try save(list)
+        }.value
+    }
+
+    public func save<T: Omirable>(_ list: [T]) throws {
         let db = try SQLite(named: name)
         try db.execute("BEGIN TRANSACTION;")
 
-        try Entity.setup(in: db)
+        try T.setup(in: db)
         try list.save(in: db)
 
         try db.execute("END TRANSACTION;")
     }
 
-    public func fetchOne<Entity: Omirable>(_ type: Entity.Type = Entity.self, with options: OmirosQueryOptions<Entity> = .init()) throws -> Entity? {
+    public func fetchOne<T: Omirable>(_ type: T.Type = T.self, with options: OmirosQueryOptions<T> = .init()) async throws -> T? {
+        return try await Task {
+            return try fetchOne(type, with: options)
+        }.value
+    }
+
+    public func fetchOne<T: Omirable>(_ type: T.Type = T.self, with options: OmirosQueryOptions<T> = .init()) throws -> T? {
         let db = try SQLite(named: name)
-        let entity: Entity? = try .init(with: options, db: db)
+        let entity: T? = try .init(with: options, db: db)
         return entity
     }
 
-    public func fetch<Entity: Omirable>(_ type: Entity.Type = Entity.self, with options: OmirosQueryOptions<Entity> = .init()) throws -> [Entity] {
+    public func fetch<T: Omirable>(_ type: T.Type = T.self, with options: OmirosQueryOptions<T> = .init()) async throws -> [T] {
+        return try await Task {
+            return try fetch(type, with: options)
+        }.value
+    }
+
+    public func fetch<T: Omirable>(_ type: T.Type = T.self, with options: OmirosQueryOptions<T> = .init()) throws -> [T] {
         let db = try SQLite(named: name)
-        let entities: [Entity] = try .init(with: options, db: db)
+        let entities: [T] = try .init(with: options, db: db)
         return entities
     }
 
-    public func delete<Entity: Omirable>(_ type: Entity.Type = Entity.self, with options: OmirosQueryOptions<Entity> = .init()) throws {
+    public func delete<T: Omirable>(_ type: T.Type = T.self, with options: OmirosQueryOptions<T> = .init()) async throws {
+        try await Task {
+            try delete(type, with: options)
+        }.value
+    }
+
+    public func delete<T: Omirable>(_ type: T.Type = T.self, with options: OmirosQueryOptions<T> = .init()) throws {
         let db = try SQLite(named: name)
 
-        guard try Entity.isSetup(in: db) else { return }
+        guard try T.isSetup(in: db) else { return }
 
-        try db.execute("DELETE FROM \(Entity.omirosName)\(options.sqlWhereClause());")
+        try db.execute("DELETE FROM \(T.omirosName)\(options.sqlWhereClause());")
+    }
+
+    public func deleteAll() async throws {
+        try await Task {
+            try deleteAll()
+        }.value
     }
 
     public func deleteAll() throws {
