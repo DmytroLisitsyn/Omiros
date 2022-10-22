@@ -124,7 +124,24 @@ extension Omirable {
         let columnString = container.content.keys.joined(separator: ",")
         let formatString = Array(repeating: "?", count: container.content.count).joined(separator: ",")
 
-        let statement = try db.prepare("INSERT INTO \(Self.omirosName)(\(columnString)) VALUES(\(formatString));")
+        var query = "INSERT INTO \(Self.omirosName)(\(columnString)) VALUES(\(formatString))"
+
+        if !container.primaryKeys.isEmpty {
+            var updates: [String] = []
+            for (key, _) in container.content where !container.primaryKeys.contains(key) {
+                updates.append("\(key)=excluded.\(key)")
+            }
+
+            let primaryKeys = container.primaryKeys.joined(separator: ",")
+            let updateString = updates.joined(separator: ",")
+            let onConflictQuery = "ON CONFLICT(\(primaryKeys)) DO UPDATE SET \(updateString)"
+
+            query += " \(onConflictQuery)"
+        }
+
+        query += ";"
+
+        let statement = try db.prepare(query)
         for (index, value) in container.content.values.enumerated() {
             try statement.bind(value, at: Int32(index + 1))
         }
