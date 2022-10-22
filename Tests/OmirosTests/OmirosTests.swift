@@ -230,7 +230,6 @@ class OmirosTests: XCTestCase {
 
     func testSavingExisting() async throws {
         var owner = Owner()
-        owner.name = "Ievgen"
 
         var ebony = Dog(ownerID: owner.id, name: "Ebony")
         ebony.collarCaption = "Ebony"
@@ -242,7 +241,6 @@ class OmirosTests: XCTestCase {
 
         try await omiros.save(owner)
 
-        owner.name = "Jack"
         ebony.collarCaption = "Love Ebony"
         ivory.collarCaption = "Love Ivory"
         owner.dogs = [ebony, ivory].sorted(by: { $0.collarCaption > $1.collarCaption })

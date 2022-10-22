@@ -127,14 +127,21 @@ extension Omirable {
         var query = "INSERT INTO \(Self.omirosName)(\(columnString)) VALUES(\(formatString))"
 
         if !container.primaryKeys.isEmpty {
-            var updates: [String] = []
-            for (key, _) in container.content where !container.primaryKeys.contains(key) {
-                updates.append("\(key)=excluded.\(key)")
-            }
+            let conflictedKeysString = container.primaryKeys.joined(separator: ",")
+            let keys = Set(container.content.keys).subtracting(container.primaryKeys)
 
-            let primaryKeys = container.primaryKeys.joined(separator: ",")
-            let updateString = updates.joined(separator: ",")
-            let onConflictQuery = "ON CONFLICT(\(primaryKeys)) DO UPDATE SET \(updateString)"
+            let onConflictQuery: String
+            if keys.isEmpty {
+                onConflictQuery = "ON CONFLICT(\(conflictedKeysString)) DO NOTHING"
+            } else {
+                var updates: [String] = []
+                for key in keys {
+                    updates.append("\(key)=excluded.\(key)")
+                }
+
+                let updateString = updates.joined(separator: ",")
+                onConflictQuery = "ON CONFLICT(\(conflictedKeysString)) DO UPDATE SET \(updateString)"
+            }
 
             query += " \(onConflictQuery)"
         }

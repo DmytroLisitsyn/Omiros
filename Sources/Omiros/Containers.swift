@@ -84,24 +84,24 @@ public final class OmirosOutput<T: Omirable> {
         }
     }
 
-    public func get<U: SQLiteType>(_ key: T.OmirosKey) throws -> U {
+    public func get<U: SQLiteType>(_ valueType: U.Type = U.self, for key: T.OmirosKey) throws -> U {
         guard let index = indexPerColumnName[key.stringValue], let statement = statement else {
             throw SQLiteError()
         }
 
-        return statement.column(at: index, type: U.self)
+        return statement.column(at: index, type: valueType)
     }
 
-    public func get<U: Omirable>(with options: OmirosQueryOptions<U>) throws -> U? {
+    public func get<U: Omirable>(_ valueType: U.Type = U.self, with options: OmirosQueryOptions<U>) throws -> U? {
         guard let statement = statement else { throw SQLiteError() }
 
         return try .init(with: options, db: statement.database)
     }
 
-    public func get<U: Omirable>(with options: OmirosQueryOptions<U>) throws -> [U] {
+    public func get<U: Omirable>(_ valueType: [U].Type = [U].self, with options: OmirosQueryOptions<U>) throws -> [U] {
         guard let statement = statement else { throw SQLiteError() }
 
-        return try .init(with: options, db: statement.database) ?? []
+        return try valueType.init(with: options, db: statement.database) ?? []
     }
 
 }

@@ -52,11 +52,11 @@ struct Person: Omirable {
     init(container: OmirosOutput<Person>) throws {
         self.init()
 
-        id = try container.get(.id)
-        name = try container.get(.name)
-        surname = try container.get(.surname)
-        height = try container.get(.height)
-        dateOfBirth = try container.get(.dateOfBirth)
+        id = try container.get(for: .id)
+        name = try container.get(for: .name)
+        surname = try container.get(for: .surname)
+        height = try container.get(for: .height)
+        dateOfBirth = try container.get(for: .dateOfBirth)
     }
 
     func fill(container: OmirosInput<Person>) {
@@ -86,9 +86,9 @@ struct Owner: Omirable {
     }
 
     init(container: OmirosOutput<Owner>) throws {
-        self.init(id: try container.get(.id))
+        self.init(id: try container.get(for: .id))
 
-        name = try container.get(.name)
+        name = try container.get(for: .name)
         dogs = try container.get(with: .init(.equal(.ownerID, id)))
     }
 
@@ -125,9 +125,9 @@ struct Dog: Omirable, Equatable {
     }
 
     init(container: OmirosOutput<Dog>) throws {
-        self.init(ownerID: try container.get(.ownerID), name: try container.get(.name))
+        self.init(ownerID: try container.get(for: .ownerID), name: try container.get(for: .name))
 
-        collarCaption = try container.get(.collarCaption)
+        collarCaption = try container.get(for: .collarCaption)
     }
 
     func fill(container: OmirosInput<Dog>) {
