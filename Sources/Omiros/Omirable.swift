@@ -25,27 +25,19 @@
 import Foundation
 
 public protocol AnyOmirable {
-
     static var omirosName: String { get }
 
-    init()
-    init(with options: AnyOmirosQueryOptions, db: SQLite) throws
-
+    init?(with options: AnyOmirosQueryOptions, db: SQLite) throws
     static func isSetup(in db: SQLite) throws -> Bool
-    static func setup(in db: SQLite) throws
+    func setup(in db: SQLite) throws
     func save(in db: SQLite) throws
-
 }
 
 public protocol Omirable: AnyOmirable {
-
     associatedtype OmirosKey: CodingKey
 
-    typealias OmirosField<T: SQLiteType> = _OmirosField<Self, T>
-
-    init(container: OmirosOutput<Self>)
+    init(container: OmirosOutput<Self>) throws
     func fill(container: OmirosInput<Self>)
-
 }
 
 extension Omirable {
@@ -54,14 +46,23 @@ extension Omirable {
         return "\(self)"
     }
 
-    public init() {
-        let container = OmirosOutput<Self>(nil)
-        self.init(container: container)
-    }
+    public init?(with options: AnyOmirosQueryOptions, db: SQLite) throws {
+        guard try Self.isSetup(in: db) else {
+            return nil
+        }
 
-    public init(with options: AnyOmirosQueryOptions, db: SQLite) throws {
-        let entity: Self? = try .init(with: options, db: db)
-        self = entity ?? .init()
+        var options = options
+        options.limit = 1
+
+        let query = "SELECT * FROM \(Self.omirosName)\(options.sqlWhereClause());"
+        let statement = try db.prepare(query).step()
+
+        if statement.hasMoreRows {
+            let container = OmirosOutput<Self>(statement)
+            self = try .init(container: container)
+        } else {
+            return nil
+        }
     }
 
     public static func isSetup(in db: SQLite) throws -> Bool {
@@ -70,14 +71,14 @@ extension Omirable {
         return statement.hasMoreRows
     }
 
-    public static func setup(in db: SQLite) throws {
+    public func setup(in db: SQLite) throws {
         let container = OmirosInput<Self>()
-        self.init().fill(container: container)
+        fill(container: container)
 
-        if try isSetup(in: db) {
+        if try Self.isSetup(in: db) {
             var existingColumns: Set<String> = []
 
-            let statement = try db.prepare("PRAGMA table_info(\(omirosName))").step()
+            let statement = try db.prepare("PRAGMA table_info(\(Self.omirosName))").step()
             while statement.hasMoreRows {
                 let column = String.column(at: 1, statement: statement)
                 existingColumns.insert(column)
@@ -88,10 +89,10 @@ extension Omirable {
             for (column, value) in container.content where !existingColumns.contains(column) {
                 existingColumns.insert(column)
 
-                try db.execute("ALTER TABLE \(omirosName) ADD \(column) \(type(of: value).sqLiteName);")
+                try db.execute("ALTER TABLE \(Self.omirosName) ADD \(column) \(type(of: value).sqLiteName);")
 
                 if let relation = container.relations[column] {
-                    try db.execute("ALTER TABLE \(omirosName) ADD FOREIGN KEY(\(column)) REFERENCES \(relation.type.omirosName)(\(relation.key)) ON DELETE CASCADE;")
+                    try db.execute("ALTER TABLE \(Self.omirosName) ADD FOREIGN KEY(\(column)) REFERENCES \(relation.type.omirosName)(\(relation.key)) ON DELETE CASCADE;")
                 }
             }
         } else {
@@ -112,7 +113,7 @@ extension Omirable {
             }
 
             let description = columns.joined(separator: ",")
-            try db.execute("CREATE TABLE \(omirosName)(\(description));")
+            try db.execute("CREATE TABLE \(Self.omirosName)(\(description));")
         }
     }
 
@@ -130,7 +131,7 @@ extension Omirable {
         try statement.step()
 
         for element in container.enclosed.values {
-            try type(of: element).setup(in: db)
+            try element.setup(in: db)
             try element.save(in: db)
         }
     }
@@ -143,36 +144,16 @@ extension Optional: AnyOmirable where Wrapped: Omirable {
         return Wrapped.omirosName
     }
 
-    public init() {
-        self = nil
-    }
-
     public init(with options: AnyOmirosQueryOptions, db: SQLite) throws {
-        guard try Wrapped.isSetup(in: db) else {
-            self = nil
-            return
-        }
-
-        var options = options
-        options.limit = 1
-
-        let query = "SELECT * FROM \(Wrapped.omirosName)\(options.sqlWhereClause());"
-        let statement = try db.prepare(query).step()
-
-        if statement.hasMoreRows {
-            let container = OmirosOutput<Wrapped>(statement)
-            self = Wrapped(container: container)
-        } else {
-            self = nil
-        }
+        self = try Wrapped.init(with: options, db: db)
     }
 
     public static func isSetup(in db: SQLite) throws -> Bool {
         return try Wrapped.isSetup(in: db)
     }
 
-    public static func setup(in db: SQLite) throws {
-        try Wrapped.setup(in: db)
+    public func setup(in db: SQLite) throws {
+        try self?.setup(in: db)
     }
 
     public func save(in db: SQLite) throws {
@@ -192,10 +173,9 @@ extension Array: AnyOmirable where Element: Omirable {
         return Element.omirosName
     }
 
-    public init(with options: AnyOmirosQueryOptions, db: SQLite) throws {
+    public init?(with options: AnyOmirosQueryOptions, db: SQLite) throws {
         guard try Element.isSetup(in: db) else {
-            self.init()
-            return
+            return nil
         }
 
         var query = "SELECT COUNT(*) FROM \(Element.omirosName)\(options.sqlWhereClause());"
@@ -210,7 +190,7 @@ extension Array: AnyOmirable where Element: Omirable {
 
         while statement.hasMoreRows {
             let container = OmirosOutput<Element>(statement)
-            let entity = Element(container: container)
+            let entity = try Element(container: container)
             append(entity)
 
             try statement.step()
@@ -221,8 +201,8 @@ extension Array: AnyOmirable where Element: Omirable {
         return try Element.isSetup(in: db)
     }
 
-    public static func setup(in db: SQLite) throws {
-        try Element.setup(in: db)
+    public func setup(in db: SQLite) throws {
+        try first?.setup(in: db)
     }
 
     public func save(in db: SQLite) throws {

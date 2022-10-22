@@ -25,12 +25,10 @@
 import Foundation
 
 public protocol AnyOmirosQueryOptions {
-
     var offset: Int { get set }
     var limit: Int { get set }
 
     func sqlWhereClause() -> String
-
 }
 
 public struct OmirosQueryOptions<T: Omirable>: AnyOmirosQueryOptions {

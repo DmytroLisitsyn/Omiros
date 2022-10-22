@@ -43,7 +43,7 @@ public final class Omiros {
         let db = try SQLite(named: name)
         try db.execute("BEGIN TRANSACTION;")
 
-        try T.setup(in: db)
+        try entity.setup(in: db)
         try entity.save(in: db)
 
         try db.execute("END TRANSACTION;")
@@ -59,19 +59,19 @@ public final class Omiros {
         let db = try SQLite(named: name)
         try db.execute("BEGIN TRANSACTION;")
 
-        try T.setup(in: db)
+        try list.first?.setup(in: db)
         try list.save(in: db)
 
         try db.execute("END TRANSACTION;")
     }
 
-    public func fetchOne<T: Omirable>(_ type: T.Type = T.self, with options: OmirosQueryOptions<T> = .init()) async throws -> T? {
+    public func fetchFirst<T: Omirable>(_ type: T.Type = T.self, with options: OmirosQueryOptions<T> = .init()) async throws -> T? {
         return try await Task {
-            return try fetchOne(type, with: options)
+            return try fetchFirst(type, with: options)
         }.value
     }
 
-    public func fetchOne<T: Omirable>(_ type: T.Type = T.self, with options: OmirosQueryOptions<T> = .init()) throws -> T? {
+    public func fetchFirst<T: Omirable>(_ type: T.Type = T.self, with options: OmirosQueryOptions<T> = .init()) throws -> T? {
         let db = try SQLite(named: name)
         let entity: T? = try .init(with: options, db: db)
         return entity
@@ -85,7 +85,7 @@ public final class Omiros {
 
     public func fetch<T: Omirable>(_ type: T.Type = T.self, with options: OmirosQueryOptions<T> = .init()) throws -> [T] {
         let db = try SQLite(named: name)
-        let entities: [T] = try .init(with: options, db: db)
+        let entities: [T] = try .init(with: options, db: db) ?? []
         return entities
     }
 

@@ -35,11 +35,11 @@ struct Person: Omirable {
         case dateOfBirth
     }
 
-    @OmirosField(.id) var id: String
-    @OmirosField(.name) var name: String
-    @OmirosField(.surname) var surname: String?
-    @OmirosField(.height) var height: Double
-    @OmirosField(.dateOfBirth) var dateOfBirth: Date
+    var id = ""
+    var name = ""
+    var surname: String?
+    var height: Double
+    var dateOfBirth: Date
 
     init(id: String = UUID().uuidString, name: String = "John Doe", surname: String? = nil, height: Double = 172, dateOfBirth: Date = Date(timeIntervalSince1970: 0)) {
         self.id = id
@@ -49,22 +49,22 @@ struct Person: Omirable {
         self.dateOfBirth = dateOfBirth
     }
 
-    init(container: OmirosOutput<Person>) {
+    init(container: OmirosOutput<Person>) throws {
         self.init()
 
-        _id.fill(from: container)
-        _name.fill(from: container)
-        _surname.fill(from: container)
-        _height.fill(from: container)
-        _dateOfBirth.fill(from: container)
+        id = try container.get(.id)
+        name = try container.get(.name)
+        surname = try container.get(.surname)
+        height = try container.get(.height)
+        dateOfBirth = try container.get(.dateOfBirth)
     }
 
     func fill(container: OmirosInput<Person>) {
-        container.fill(from: _id)
-        container.fill(from: _name)
-        container.fill(from: _surname)
-        container.fill(from: _height)
-        container.fill(from: _dateOfBirth)
+        container.set(id, for: .id)
+        container.set(name, for: .name)
+        container.set(surname, for: .surname)
+        container.set(height, for: .height)
+        container.set(dateOfBirth, for: .dateOfBirth)
     }
 
 }
@@ -73,27 +73,30 @@ struct Owner: Omirable {
 
     enum OmirosKey: CodingKey {
         case id
+        case name
         case dogs
     }
 
-    @OmirosField(.id) var id: String
-
+    var id = ""
+    var name = ""
     var dogs: [Dog] = []
 
     init(id: String = UUID().uuidString) {
         self.id = id
     }
 
-    init(container: OmirosOutput<Owner>) {
-        self.init(id: container[.id])
+    init(container: OmirosOutput<Owner>) throws {
+        self.init(id: try container.get(.id))
 
-        dogs = container.get(with: .init(.equal(.ownerID, id)))
+        name = try container.get(.name)
+        dogs = try container.get(with: .init(.equal(.ownerID, id)))
     }
 
     func fill(container: OmirosInput<Owner>) {
-        container.fill(from: _id)
-
         container.setPrimaryKey(.id)
+
+        container.set(id, for: .id)
+        container.set(name, for: .name)
         container.set(dogs)
     }
 
@@ -102,25 +105,33 @@ struct Owner: Omirable {
 struct Dog: Omirable {
 
     enum OmirosKey: CodingKey {
+        case id
         case ownerID
         case name
     }
 
-    @OmirosField(.ownerID) var ownerID: String
-    @OmirosField(.name) var name: String
+    var id: String {
+        return "\(ownerID)_\(name)"
+    }
+
+    var ownerID = ""
+    var name = ""
 
     init(ownerID: String, name: String) {
         self.ownerID = ownerID
         self.name = name
     }
 
-    init(container: OmirosOutput<Dog>) {
-        self.init(ownerID: container[.ownerID], name: container[.name])
+    init(container: OmirosOutput<Dog>) throws {
+        self.init(ownerID: try container.get(.ownerID), name: try container.get(.name))
     }
 
     func fill(container: OmirosInput<Dog>) {
-        container.fill(from: _name)
-        container.fill(from: _ownerID, as: OmirosRelation<Owner>(.id))
+        container.setPrimaryKey(.id)
+
+        container.set(id, for: .id)
+        container.set(name, for: .name)
+        container.set(ownerID, for: .ownerID, as: OmirosRelation<Owner>(.id))
     }
 
 }
