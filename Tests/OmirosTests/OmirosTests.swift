@@ -228,25 +228,35 @@ class OmirosTests: XCTestCase {
         XCTAssertTrue(fetchedDogs.isEmpty)
     }
 
-    func testSavingExisting() throws {
-        var owner = Owner(id: "owner_0")
+    func testSavingExisting() async throws {
+        var owner = Owner()
         owner.name = "Ievgen"
 
-        owner.dogs.append(Dog(ownerID: owner.id, name: "Ebony"))
-        owner.dogs.append(Dog(ownerID: owner.id, name: "Ivory"))
+        var ebony = Dog(ownerID: owner.id, name: "Ebony")
+        ebony.collarCaption = "Ebony"
 
-        try omiros.save(owner)
+        var ivory = Dog(ownerID: owner.id, name: "Ivory")
+        ivory.collarCaption = "Evory"
+
+        owner.dogs = [ebony, ivory]
+
+        try await omiros.save(owner)
 
         owner.name = "Jack"
+        ebony.collarCaption = "Love Ebony"
+        ivory.collarCaption = "Love Ivory"
+        owner.dogs = [ebony, ivory].sorted(by: { $0.collarCaption > $1.collarCaption })
 
-        try omiros.save(owner)
+        try await omiros.save(owner)
 
-        let owners = try omiros.fetch(Owner.self)
-        let dogs = try omiros.fetch(Dog.self)
+        let owners = try await omiros.fetch(Owner.self)
+        let dogs = try await omiros.fetch(Dog.self).sorted(by: { $0.collarCaption > $1.collarCaption })
 
-        XCTAssertEqual(owners.first?.name, owner.name)
         XCTAssertEqual(owners.count, 1)
         XCTAssertEqual(dogs.count, 2)
+        XCTAssertEqual(owners.first?.name, owner.name)
+        XCTAssertEqual(dogs[0], owner.dogs[0])
+        XCTAssertEqual(dogs[1], owner.dogs[1])
     }
 
 }

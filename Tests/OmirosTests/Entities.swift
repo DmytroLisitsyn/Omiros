@@ -102,12 +102,13 @@ struct Owner: Omirable {
 
 }
 
-struct Dog: Omirable {
+struct Dog: Omirable, Equatable {
 
     enum OmirosKey: CodingKey {
         case id
         case ownerID
         case name
+        case collarCaption
     }
 
     var id: String {
@@ -116,6 +117,7 @@ struct Dog: Omirable {
 
     var ownerID = ""
     var name = ""
+    var collarCaption = ""
 
     init(ownerID: String, name: String) {
         self.ownerID = ownerID
@@ -124,6 +126,8 @@ struct Dog: Omirable {
 
     init(container: OmirosOutput<Dog>) throws {
         self.init(ownerID: try container.get(.ownerID), name: try container.get(.name))
+
+        collarCaption = try container.get(.collarCaption)
     }
 
     func fill(container: OmirosInput<Dog>) {
@@ -131,6 +135,7 @@ struct Dog: Omirable {
 
         container.set(id, for: .id)
         container.set(name, for: .name)
+        container.set(collarCaption, for: .collarCaption)
         container.set(ownerID, for: .ownerID, as: OmirosRelation<Owner>(.id))
     }
 
