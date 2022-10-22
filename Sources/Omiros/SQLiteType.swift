@@ -26,14 +26,11 @@ import Foundation
 import SQLite3
 
 public protocol SQLiteType {
-
     static var sqLiteName: String { get }
     var sqLiteValue: String { get }
 
-    init()
     func bind(at index: Int32, statement: SQLite.Statement) -> Int32
     static func column(at index: Int32, statement: SQLite.Statement) -> Self
-
 }
 
 extension Optional: SQLiteType where Wrapped: SQLiteType {
@@ -44,10 +41,6 @@ extension Optional: SQLiteType where Wrapped: SQLiteType {
 
     public var sqLiteValue: String {
         return "NULL"
-    }
-
-    public init() {
-        self = nil
     }
 
     public func bind(at index: Int32, statement: SQLite.Statement) -> Int32 {

@@ -42,7 +42,7 @@ class OmirosTests: XCTestCase {
 
         try omiros.save(entity)
 
-        let fetched = try omiros.fetchOne(Person.self)
+        let fetched = try omiros.fetchFirst(Person.self)
 
         XCTAssertEqual(entity.name, fetched?.name)
         XCTAssertEqual(entity.surname, fetched?.surname)
@@ -52,7 +52,7 @@ class OmirosTests: XCTestCase {
 
     func testSavingPerformance() throws {
         var entities: [Person] = []
-        for _ in 0..<1000 {
+        for _ in 0..<10000 {
             entities.append(.init())
         }
 
@@ -63,7 +63,7 @@ class OmirosTests: XCTestCase {
 
     func testFetchingPerformance() throws {
         var entities: [Person] = []
-        for _ in 0..<1000 {
+        for _ in 0..<10000 {
             entities.append(.init())
         }
 
@@ -77,7 +77,7 @@ class OmirosTests: XCTestCase {
 
     func testFilteringPerformance() throws {
         var entities: [Person] = []
-        for _ in 0..<1000 {
+        for _ in 0..<10000 {
             entities.append(.init())
         }
         for _ in 0..<100 {
@@ -199,7 +199,7 @@ class OmirosTests: XCTestCase {
 
         try await omiros.save(entity)
 
-        let fetched: Owner? = try await omiros.fetchOne()
+        let fetched: Owner? = try await omiros.fetchFirst()
 
         XCTAssertEqual(entity.id, fetched?.id)
         XCTAssertEqual(entity.dogs.count, fetched?.dogs.count)
@@ -221,11 +221,32 @@ class OmirosTests: XCTestCase {
 
         try await omiros.delete(Owner.self)
 
-        let fetchedOwner: Owner? = try await omiros.fetchOne()
+        let fetchedOwner: Owner? = try await omiros.fetchFirst()
         XCTAssertNil(fetchedOwner)
 
         fetchedDogs = try await omiros.fetch()
         XCTAssertTrue(fetchedDogs.isEmpty)
+    }
+
+    func testSavingExisting() throws {
+        var owner = Owner(id: "owner_0")
+        owner.name = "Ievgen"
+
+        owner.dogs.append(Dog(ownerID: owner.id, name: "Ebony"))
+        owner.dogs.append(Dog(ownerID: owner.id, name: "Ivory"))
+
+        try omiros.save(owner)
+
+        owner.name = "Jack"
+
+        try omiros.save(owner)
+
+        let owners = try omiros.fetch(Owner.self)
+        let dogs = try omiros.fetch(Dog.self)
+
+        XCTAssertEqual(owners.first?.name, owner.name)
+        XCTAssertEqual(owners.count, 1)
+        XCTAssertEqual(dogs.count, 2)
     }
 
 }

@@ -41,27 +41,6 @@ public struct OmirosRelation<T: Omirable>: AnyOmirosRelation {
 
 }
 
-@propertyWrapper
-public struct _OmirosField<T: Omirable, U: SQLiteType>: CustomDebugStringConvertible {
-
-    public let key: T.OmirosKey
-    public var wrappedValue: U
-
-    public init(_ key: T.OmirosKey, initialValue: U = .init()) {
-        self.key = key
-        self.wrappedValue = initialValue
-    }
-
-    public mutating func fill(from container: OmirosOutput<T>) {
-        wrappedValue = container.get(key)
-    }
-
-    public var debugDescription: String {
-        return "\(wrappedValue)"
-    }
-
-}
-
 public final class OmirosInput<T: Omirable> {
 
     var primaryKeys: Set<String> = []
@@ -73,26 +52,12 @@ public final class OmirosInput<T: Omirable> {
         primaryKeys.insert(key.stringValue)
     }
 
-    public subscript<U: SQLiteType>(_ key: T.OmirosKey) -> U? {
-        get { content[key.stringValue] as? U }
-        set { content[key.stringValue] = newValue }
-    }
-
-    public func fill<U: SQLiteType>(from field: _OmirosField<T, U>) {
-        content[field.key.stringValue] = field.wrappedValue
-    }
-
     public func set<U: SQLiteType>(_ value: U, for key: T.OmirosKey) {
         content[key.stringValue] = value
     }
 
     public func set<U: AnyOmirable>(_ value: U) {
         enclosed[U.omirosName] = value
-    }
-
-    public func fill<U: SQLiteType, V: Omirable>(from field: _OmirosField<T, U>, as relation: OmirosRelation<V>) {
-        content[field.key.stringValue] = field.wrappedValue
-        relations[field.key.stringValue] = relation
     }
 
     public func set<U: SQLiteType, V: Omirable>(_ value: U, for key: T.OmirosKey, as relation: OmirosRelation<V>) {
@@ -119,46 +84,24 @@ public final class OmirosOutput<T: Omirable> {
         }
     }
 
-    public subscript<U: SQLiteType>(_ key: T.OmirosKey) -> U {
-        return get(key)
-    }
-
-    public func get<U: SQLiteType>(_ key: T.OmirosKey) -> U {
+    public func get<U: SQLiteType>(_ key: T.OmirosKey) throws -> U {
         guard let index = indexPerColumnName[key.stringValue], let statement = statement else {
-            return U.init()
+            throw SQLiteError()
         }
 
         return statement.column(at: index, type: U.self)
     }
 
-    public func get<U: Omirable>(with options: OmirosQueryOptions<U>) -> U {
-        do {
-            guard let statement = statement else { throw SQLiteError() }
+    public func get<U: Omirable>(with options: OmirosQueryOptions<U>) throws -> U? {
+        guard let statement = statement else { throw SQLiteError() }
 
-            return try .init(with: options, db: statement.database)
-        } catch {
-            return .init()
-        }
+        return try .init(with: options, db: statement.database)
     }
 
-    public func get<U: Omirable>(with options: OmirosQueryOptions<U>) -> U? {
-        do {
-            guard let statement = statement else { throw SQLiteError() }
+    public func get<U: Omirable>(with options: OmirosQueryOptions<U>) throws -> [U] {
+        guard let statement = statement else { throw SQLiteError() }
 
-            return try .init(with: options, db: statement.database)
-        } catch {
-            return nil
-        }
-    }
-
-    public func get<U: Omirable>(with options: OmirosQueryOptions<U>) -> [U] {
-        do {
-            guard let statement = statement else { throw SQLiteError() }
-
-            return try .init(with: options, db: statement.database)
-        } catch {
-            return []
-        }
+        return try .init(with: options, db: statement.database) ?? []
     }
 
 }
