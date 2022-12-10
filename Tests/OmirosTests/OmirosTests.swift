@@ -257,4 +257,32 @@ class OmirosTests: XCTestCase {
         XCTAssertEqual(dogs[1], owner.dogs[1])
     }
 
+    func testParallelOperations() async throws {
+        let saveBunchOfPeople: @Sendable () async throws -> Void = {
+            var entities: [Person] = []
+            for _ in 0..<100 {
+                entities.append(.init())
+            }
+
+            try await self.omiros.save(entities)
+        }
+
+        try await withThrowingTaskGroup(of: Void.self) { group in
+            group.addTask(operation: saveBunchOfPeople)
+            group.addTask(operation: saveBunchOfPeople)
+
+            group.addTask {
+                let options = OmirosQueryOptions<Person>(limit: 100)
+                try await self.omiros.delete(Person.self, with: options)
+            }
+
+            group.addTask(operation: saveBunchOfPeople)
+
+            try await group.waitForAll()
+        }
+
+        let fetched = try await omiros.fetch(Person.self)
+        XCTAssertEqual(fetched.count, 200)
+    }
+
 }
