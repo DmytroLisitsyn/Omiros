@@ -29,14 +29,14 @@ public final class Omiros {
 
     public let name: String
 
+    private let queue = DispatchQueue(label: "com.dlisitsyn.Omiros")
+
     public init(named name: String) {
         self.name = name
     }
 
-    public func save<T: Omirable>(_ entity: T) async throws {
-        try await Task {
-            try save(entity)
-        }.value
+    @Sendable public func save<T: Omirable>(_ entity: T) async throws {
+        try await sync { try self.save(entity) }
     }
 
     public func save<T: Omirable>(_ entity: T) throws {
@@ -49,10 +49,8 @@ public final class Omiros {
         try db.execute("END TRANSACTION;")
     }
 
-    public func save<T: Omirable>(_ list: [T]) async throws {
-        try await Task {
-            try save(list)
-        }.value
+    @Sendable public func save<T: Omirable>(_ list: [T]) async throws {
+        try await sync { try self.save(list) }
     }
 
     public func save<T: Omirable>(_ list: [T]) throws {
@@ -65,10 +63,8 @@ public final class Omiros {
         try db.execute("END TRANSACTION;")
     }
 
-    public func fetchFirst<T: Omirable>(_ type: T.Type = T.self, with options: OmirosQueryOptions<T> = .init()) async throws -> T? {
-        return try await Task {
-            return try fetchFirst(type, with: options)
-        }.value
+    @Sendable public func fetchFirst<T: Omirable>(_ type: T.Type = T.self, with options: OmirosQueryOptions<T> = .init()) async throws -> T? {
+        return try await sync { try self.fetchFirst(type, with: options) }
     }
 
     public func fetchFirst<T: Omirable>(_ type: T.Type = T.self, with options: OmirosQueryOptions<T> = .init()) throws -> T? {
@@ -77,10 +73,8 @@ public final class Omiros {
         return entity
     }
 
-    public func fetch<T: Omirable>(_ type: T.Type = T.self, with options: OmirosQueryOptions<T> = .init()) async throws -> [T] {
-        return try await Task {
-            return try fetch(type, with: options)
-        }.value
+    @Sendable public func fetch<T: Omirable>(_ type: T.Type = T.self, with options: OmirosQueryOptions<T> = .init()) async throws -> [T] {
+        return try await sync { try self.fetch(type, with: options) }
     }
 
     public func fetch<T: Omirable>(_ type: T.Type = T.self, with options: OmirosQueryOptions<T> = .init()) throws -> [T] {
@@ -89,10 +83,8 @@ public final class Omiros {
         return entities
     }
 
-    public func delete<T: Omirable>(_ type: T.Type = T.self, with options: OmirosQueryOptions<T> = .init()) async throws {
-        try await Task {
-            try delete(type, with: options)
-        }.value
+    @Sendable public func delete<T: Omirable>(_ type: T.Type = T.self, with options: OmirosQueryOptions<T> = .init()) async throws {
+        try await sync { try self.delete(type, with: options) }
     }
 
     public func delete<T: Omirable>(_ type: T.Type = T.self, with options: OmirosQueryOptions<T> = .init()) throws {
@@ -103,14 +95,29 @@ public final class Omiros {
         try db.execute("DELETE FROM \(T.omirosName)\(options.sqlWhereClause());")
     }
 
-    public func deleteAll() async throws {
-        try await Task {
-            try deleteAll()
-        }.value
+    @Sendable public func deleteAll() async throws {
+        try await sync { try self.deleteAll() }
     }
 
     public func deleteAll() throws {
         try SQLite.delete(named: name)
+    }
+
+}
+
+extension Omiros {
+
+    private func sync<T>(_ perform: @escaping () throws -> T) async throws -> T {
+        return try await withCheckedThrowingContinuation { continuation in
+            queue.async {
+                do {
+                    let result = try perform()
+                    continuation.resume(with: .success(result))
+                } catch {
+                    continuation.resume(with: .failure(error))
+                }
+            }
+        }
     }
 
 }
