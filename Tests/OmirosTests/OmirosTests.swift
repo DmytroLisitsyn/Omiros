@@ -270,19 +270,13 @@ class OmirosTests: XCTestCase {
         try await withThrowingTaskGroup(of: Void.self) { group in
             group.addTask(operation: saveBunchOfPeople)
             group.addTask(operation: saveBunchOfPeople)
-
-            group.addTask {
-                let options = OmirosQueryOptions<Person>(limit: 100)
-                try await self.omiros.delete(Person.self, with: options)
-            }
-
             group.addTask(operation: saveBunchOfPeople)
 
             try await group.waitForAll()
         }
 
         let fetched = try await omiros.fetch(Person.self)
-        XCTAssertEqual(fetched.count, 200)
+        XCTAssertEqual(fetched.count, 300)
     }
 
 }
