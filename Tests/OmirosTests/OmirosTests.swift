@@ -48,6 +48,7 @@ class OmirosTests: XCTestCase {
         XCTAssertEqual(entity.surname, fetched?.surname)
         XCTAssertEqual(entity.dateOfBirth, fetched?.dateOfBirth)
         XCTAssertEqual(entity.height, fetched?.height)
+        XCTAssertEqual(entity.consumedWine, fetched?.consumedWine)
     }
 
     func testSavingPerformance() throws {
