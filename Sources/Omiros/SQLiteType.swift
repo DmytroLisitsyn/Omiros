@@ -170,3 +170,28 @@ extension Date: SQLiteType {
     }
 
 }
+
+extension Data: SQLiteType {
+
+    public static var sqLiteName: String {
+        return "BLOB"
+    }
+
+    public var sqLiteValue: String {
+        debugPrint("Data values comparison is not supported by Omiros. Attempt will result in excluding results from query.")
+        return ""
+    }
+
+    public func bind(at index: Int32, statement: SQLite.Statement) -> Int32 {
+        let data = self as NSData
+        return sqlite3_bind_blob(statement.pointer, index, data.bytes, Int32(data.length), nil)
+    }
+
+    public static func column(at index: Int32, statement: SQLite.Statement) -> Data {
+        let bytes = sqlite3_column_blob(statement.pointer, index)
+        let length = sqlite3_column_bytes(statement.pointer, index)
+        let data = NSData(bytes: bytes, length: Int(length))
+        return data as Data
+    }
+
+}

@@ -25,6 +25,8 @@
 import Foundation
 import Omiros
 
+// MARK: - Person
+
 struct Person: Omirable {
 
     enum OmirosKey: CodingKey {
@@ -33,6 +35,7 @@ struct Person: Omirable {
         case surname
         case height
         case dateOfBirth
+        case consumedWine
     }
 
     var id = ""
@@ -40,6 +43,7 @@ struct Person: Omirable {
     var surname: String?
     var height: Double
     var dateOfBirth: Date
+    var consumedWine: Data? = "Bottle per year".data(using: .utf8)
 
     init(id: String = UUID().uuidString, name: String = "John Doe", surname: String? = nil, height: Double = 172, dateOfBirth: Date = Date(timeIntervalSince1970: 0)) {
         self.id = id
@@ -57,6 +61,7 @@ struct Person: Omirable {
         surname = try container.get(for: .surname)
         height = try container.get(for: .height)
         dateOfBirth = try container.get(for: .dateOfBirth)
+        consumedWine = try container.get(for: .consumedWine)
     }
 
     func fill(container: OmirosInput<Person>) {
@@ -65,9 +70,12 @@ struct Person: Omirable {
         container.set(surname, for: .surname)
         container.set(height, for: .height)
         container.set(dateOfBirth, for: .dateOfBirth)
+        container.set(consumedWine, for: .consumedWine)
     }
 
 }
+
+// MARK: - Owner
 
 struct Owner: Omirable {
 
@@ -101,6 +109,8 @@ struct Owner: Omirable {
     }
 
 }
+
+// MARK: - Dog
 
 struct Dog: Omirable, Equatable {
 
