@@ -30,9 +30,3 @@ timeline.xctimeline
 playground.xcworkspace
 
 .build/
-
-*.iws
-.idea/
-
-Carthage/
-

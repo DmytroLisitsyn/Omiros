@@ -15,8 +15,8 @@ let package = Package(
     targets: [
         .target(
             name: "Omiros",
-            dependencies: [],
-            exclude: ["Info.plist"]),
+            dependencies: []
+        ),
         .testTarget(
             name: "OmirosTests",
             dependencies: ["Omiros"])
