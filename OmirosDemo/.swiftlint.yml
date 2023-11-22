@@ -12,7 +12,6 @@ opt_in_rules:
   - multiline_parameters_brackets
   - empty_collection_literal
   - closure_spacing
-  - anyobject_protocol
   - identical_operands
 
 type_name:

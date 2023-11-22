@@ -1,5 +1,5 @@
 //
-//  OmirosDemo
+//  Omiros
 //
 //  Copyright (C) 2021 Dmytro Lisitsyn
 //
@@ -22,9 +22,9 @@
 //  SOFTWARE.
 //
 
-import UIKit
-import Omiros
+import Foundation
 
-class ViewController: UIViewController {
-
+public enum OmirosError: Error {
+    case unavailableSQLiteStatement
+    case missingColumnIndex
 }

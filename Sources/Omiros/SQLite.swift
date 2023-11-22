@@ -25,22 +25,6 @@
 import Foundation
 import SQLite3
 
-public struct SQLiteError: Error, Equatable {
-
-    public let code: Int
-    public let message: String
-
-    public init(code: Int = 0, message: String = "Generic error") {
-        self.code = code
-        self.message = message
-    }
-
-    public static func == (lhs: Self, rhs: Self) -> Bool {
-        return lhs.code == rhs.code
-    }
-
-}
-
 public final class SQLite {
 
     let pointer: OpaquePointer
