@@ -70,7 +70,7 @@ public final class OmirosInput<T: Omirable> {
 public final class OmirosOutput<T: Omirable> {
 
     private weak var statement: SQLite.Statement?
-    private var indexPerColumnName: [String: Int32] = [:]
+    private var indexForColumnName: [String: Int32] = [:]
 
     init(_ statement: SQLite.Statement?) {
         self.statement = statement
@@ -80,27 +80,35 @@ public final class OmirosOutput<T: Omirable> {
         let columns = (0..<statement.columnCount).map(statement.columnName)
 
         for (index, column) in columns.enumerated() {
-            indexPerColumnName[column] = Int32(index)
+            indexForColumnName[column] = Int32(index)
         }
     }
 
     public func get<U: SQLiteType>(_ valueType: U.Type = U.self, for key: T.OmirosKey) throws -> U {
-        guard let index = indexPerColumnName[key.stringValue], let statement = statement else {
-            throw SQLiteError()
+        guard let statement = statement else {
+            throw OmirosError.unavailableSQLiteStatement
+        }
+
+        guard let index = indexForColumnName[key.stringValue] else {
+            throw OmirosError.missingColumnIndex
         }
 
         return statement.column(at: index, type: valueType)
     }
 
     public func get<U: Omirable>(_ valueType: U.Type = U.self, with options: OmirosQueryOptions<U>) throws -> U? {
-        guard let statement = statement else { throw SQLiteError() }
+        guard let statement = statement else {
+            throw OmirosError.unavailableSQLiteStatement
+        }
 
         return try .init(with: options, db: statement.database)
     }
 
     public func get<U: Omirable>(_ valueType: [U].Type = [U].self, with options: OmirosQueryOptions<U>) throws -> [U] {
-        guard let statement = statement else { throw SQLiteError() }
-
+        guard let statement = statement else {
+            throw OmirosError.unavailableSQLiteStatement
+        }
+        
         return try valueType.init(with: options, db: statement.database) ?? []
     }
 
