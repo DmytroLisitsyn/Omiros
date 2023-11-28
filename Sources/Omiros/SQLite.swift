@@ -27,17 +27,24 @@ import SQLite3
 
 public final class SQLite {
 
+    public enum Location {
+        case file(name: String)
+        case memory
+    }
+
     let pointer: OpaquePointer
-    let name: String
 
-    public init(named name: String) throws {
-        self.name = name
-
-        let fileManager = FileManager.default
-        let fileURL = try fileManager.url(for: .documentDirectory, in: .userDomainMask, appropriateFor: nil, create: false).appendingPathComponent("\(name).sqlite")
+    public init(in location: Location) throws {
+        let config: String
+        switch location {
+        case .file(let name):
+            config = try SQLite.makeFilePath(name: name)
+        case .memory:
+            config = ":memory:"
+        }
 
         var pointer: OpaquePointer!
-        let result = sqlite3_open(fileURL.path, &pointer)
+        let result = sqlite3_open(config, &pointer)
         self.pointer = pointer
 
         try processResult(result)
@@ -56,13 +63,19 @@ public final class SQLite {
         try prepare(query).step()
     }
 
-    public static func delete(named name: String) throws {
+    public static func deleteFile(named name: String) throws {
+        let filePath = try makeFilePath(name: name)
+
+        let fileManager = FileManager.default
+        if fileManager.fileExists(atPath: filePath) {
+            try fileManager.removeItem(atPath: filePath)
+        }
+    }
+
+    private static func makeFilePath(name: String) throws -> String {
         let fileManager = FileManager.default
         let fileURL = try fileManager.url(for: .documentDirectory, in: .userDomainMask, appropriateFor: nil, create: false).appendingPathComponent("\(name).sqlite")
-
-        if fileManager.fileExists(atPath: fileURL.path) {
-            try fileManager.removeItem(atPath: fileURL.path)
-        }
+        return fileURL.path
     }
 
     private func processResult(_ result: Int32) throws {

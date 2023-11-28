@@ -7,18 +7,11 @@ let package = Package(
     name: "Omiros",
     platforms: [.macOS(.v10_15), .iOS(.v13), .watchOS(.v6), .tvOS(.v13)],
     products: [
-        .library(
-            name: "Omiros",
-            targets: ["Omiros"])
+        .library(name: "Omiros", targets: ["Omiros"])
     ],
     dependencies: [],
     targets: [
-        .target(
-            name: "Omiros",
-            dependencies: []
-        ),
-        .testTarget(
-            name: "OmirosTests",
-            dependencies: ["Omiros"])
+        .target(name: "Omiros", dependencies: []),
+        .testTarget(name: "OmirosTests", dependencies: ["Omiros"])
     ]
 )

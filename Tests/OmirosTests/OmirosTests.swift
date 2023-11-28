@@ -29,7 +29,7 @@ class OmirosTests: XCTestCase {
 
     var omiros: Omiros!
 
-    override func setUpWithError() throws {
+    override func setUp() {
         omiros = Omiros(named: "MyStorage")
     }
 
@@ -251,6 +251,23 @@ class OmirosTests: XCTestCase {
 
         let fetched = try await omiros.fetch(Person.self)
         XCTAssertEqual(fetched.count, 300)
+    }
+
+    func testDeleteAll() async throws {
+        var entities: [Person] = []
+        for _ in 0..<100 {
+            entities.append(.init())
+        }
+
+        try await omiros.save(entities)
+
+        var fetched = try await omiros.fetch(Person.self)
+        XCTAssertEqual(fetched.count, 100)
+
+        try await omiros.deleteAll()
+
+        fetched = try await omiros.fetch(Person.self)
+        XCTAssertEqual(fetched.count, 0)
     }
 
 }

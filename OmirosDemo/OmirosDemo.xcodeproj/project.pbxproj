@@ -103,7 +103,6 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = CD802EA224EE9B1E0072D65A /* Build configuration list for PBXNativeTarget "OmirosDemo" */;
 			buildPhases = (
-				CD624466266C30EE00D4D1E2 /* Script - SwiftLint */,
 				CD802E7F24EE9B1B0072D65A /* Sources */,
 				CD802E8024EE9B1B0072D65A /* Frameworks */,
 				CD802E8124EE9B1B0072D65A /* Resources */,
@@ -166,28 +165,6 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
-
-/* Begin PBXShellScriptBuildPhase section */
-		CD624466266C30EE00D4D1E2 /* Script - SwiftLint */ = {
-			isa = PBXShellScriptBuildPhase;
-			alwaysOutOfDate = 1;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-			);
-			inputPaths = (
-			);
-			name = "Script - SwiftLint";
-			outputFileListPaths = (
-			);
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "if which swiftlint >/dev/null; then\nswiftlint\nelse\necho \"warning: SwiftLint not installed, download from https://github.com/realm/SwiftLint\"\nfi\n";
-		};
-/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		CD802E7F24EE9B1B0072D65A /* Sources */ = {
@@ -338,6 +315,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = OmirosDemo/OmirosDemo.entitlements;
 				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 2VV24TTYTK;
 				INFOPLIST_FILE = OmirosDemo/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -358,6 +336,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = OmirosDemo/OmirosDemo.entitlements;
 				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 2VV24TTYTK;
 				INFOPLIST_FILE = OmirosDemo/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",

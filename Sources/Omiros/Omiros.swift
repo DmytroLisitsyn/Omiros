@@ -27,14 +27,22 @@ import Combine
 
 public actor Omiros {
 
-    public let name: String
+    private let connection: SQLiteConnection
+
+    private init(connection: SQLiteConnection) {
+        self.connection = connection
+    }
 
     public init(named name: String) {
-        self.name = name
+        self.init(connection: SQLiteConnectionToFile(named: name))
+    }
+
+    public static func inMemory() -> Omiros {
+        return Omiros(connection: SQLiteConnectionToMemory())
     }
 
     public func save<T: Omirable>(_ entity: T) throws {
-        let db = try SQLite(named: name)
+        let db = try connection.setup()
         try db.execute("BEGIN TRANSACTION;")
 
         try entity.setup(in: db)
@@ -44,7 +52,7 @@ public actor Omiros {
     }
     
     public func save<T: Omirable>(_ list: [T]) throws {
-        let db = try SQLite(named: name)
+        let db = try connection.setup()
         try db.execute("BEGIN TRANSACTION;")
 
         try list.first?.setup(in: db)
@@ -54,19 +62,19 @@ public actor Omiros {
     }
 
     public func fetchFirst<T: Omirable>(_ type: T.Type = T.self, with options: OmirosQueryOptions<T> = .init()) throws -> T? {
-        let db = try SQLite(named: name)
-        let entity: T? = try .init(with: options, db: db)
+        let db = try connection.setup()
+        let entity = try T.init(with: options, db: db)
         return entity
     }
 
     public func fetch<T: Omirable>(_ type: T.Type = T.self, with options: OmirosQueryOptions<T> = .init()) throws -> [T] {
-        let db = try SQLite(named: name)
-        let entities: [T] = try .init(with: options, db: db) ?? []
+        let db = try connection.setup()
+        let entities = try Array<T>.init(with: options, db: db) ?? []
         return entities
     }
 
     public func delete<T: Omirable>(_ type: T.Type = T.self, with options: OmirosQueryOptions<T> = .init()) throws {
-        let db = try SQLite(named: name)
+        let db = try connection.setup()
 
         guard try T.isSetup(in: db) else { return }
 
@@ -74,7 +82,58 @@ public actor Omiros {
     }
 
     public func deleteAll() throws {
-        try SQLite.delete(named: name)
+        switch connection {
+        case let connection as SQLiteConnectionToFile:
+            try SQLite.deleteFile(named: connection.name)
+        case let connection as SQLiteConnectionToMemory:
+            connection.reset()
+        default:
+            break
+        }
+    }
+
+}
+
+// MARK: - SQLiteConnection
+
+private protocol SQLiteConnection {
+    func setup() throws -> SQLite
+}
+
+private final class SQLiteConnectionToFile: SQLiteConnection {
+
+    let name: String
+
+    init(named name: String) {
+        self.name = name
+    }
+
+    func setup() throws -> SQLite {
+        return try SQLite(in: .file(name: name))
+    }
+
+}
+
+private final class SQLiteConnectionToMemory: SQLiteConnection {
+
+    private var db: SQLite?
+
+    init() {
+
+    }
+
+    func setup() throws -> SQLite {
+        if let db = db {
+            return db
+        } else {
+            let db = try SQLite(in: .memory)
+            self.db = db
+            return db
+        }
+    }
+
+    func reset() {
+        db = nil
     }
 
 }
