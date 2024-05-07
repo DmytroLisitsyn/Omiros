@@ -36,6 +36,7 @@ struct Person: Omirable {
         case height
         case dateOfBirth
         case consumedWine
+        case homePageURL
     }
 
     var id = ""
@@ -44,6 +45,7 @@ struct Person: Omirable {
     var height: Double
     var dateOfBirth: Date
     var consumedWine: Data? = "Bottle per year".data(using: .utf8)
+    var homePageURL = URL(string: "https://github.com/")
 
     init(id: String = UUID().uuidString, name: String = "John Doe", surname: String? = nil, height: Double = 172, dateOfBirth: Date = Date(timeIntervalSince1970: 0)) {
         self.id = id
@@ -62,6 +64,7 @@ struct Person: Omirable {
         height = try container.get(for: .height)
         dateOfBirth = try container.get(for: .dateOfBirth)
         consumedWine = try container.get(for: .consumedWine)
+        homePageURL = try container.get(for: .homePageURL)
     }
 
     func fill(container: OmirosInput<Person>) {
@@ -71,6 +74,7 @@ struct Person: Omirable {
         container.set(height, for: .height)
         container.set(dateOfBirth, for: .dateOfBirth)
         container.set(consumedWine, for: .consumedWine)
+        container.set(homePageURL, for: .homePageURL)
     }
 
 }

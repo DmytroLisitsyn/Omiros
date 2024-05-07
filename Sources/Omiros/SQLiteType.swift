@@ -195,3 +195,24 @@ extension Data: SQLiteType {
     }
 
 }
+
+extension URL: SQLiteType {
+
+    public static var sqLiteName: String {
+        return String.sqLiteName
+    }
+
+    public var sqLiteValue: String {
+        return absoluteString.sqLiteValue
+    }
+
+    public func bind(at index: Int32, statement: SQLite.Statement) -> Int32 {
+        return sqlite3_bind_text(statement.pointer, index, NSString(string: absoluteString).utf8String, -1, nil)
+    }
+
+    public static func column(at index: Int32, statement: SQLite.Statement) -> URL {
+        let string = sqlite3_column_text(statement.pointer, index).flatMap({ String(cString: $0) }) ?? ""
+        return URL(string: string)!
+    }
+
+}

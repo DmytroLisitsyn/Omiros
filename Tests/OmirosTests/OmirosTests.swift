@@ -49,6 +49,7 @@ class OmirosTests: XCTestCase {
         XCTAssertEqual(entity.dateOfBirth, fetched?.dateOfBirth)
         XCTAssertEqual(entity.height, fetched?.height)
         XCTAssertEqual(entity.consumedWine, fetched?.consumedWine)
+        XCTAssertEqual(entity.homePageURL, fetched?.homePageURL)
     }
 
     func testFiltering() async throws {
