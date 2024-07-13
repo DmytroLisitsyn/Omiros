@@ -73,6 +73,19 @@ public actor Omiros {
         return entities
     }
 
+    public func count<T: Omirable>(_ type: T.Type = T.self, with options: OmirosQueryOptions<T> = .init()) throws -> Int {
+        let db = try connection.setup()
+
+        guard try T.isSetup(in: db) else {
+            return 0
+        }
+
+        let query = "SELECT COUNT(*) FROM \(T.omirosName)\(options.sqlWhereClause());"
+        let statement = try db.prepare(query).step()
+        let count: Int = statement.column(at: 0)
+        return count
+    }
+
     public func delete<T: Omirable>(_ type: T.Type = T.self, with options: OmirosQueryOptions<T> = .init()) throws {
         let db = try connection.setup()
 

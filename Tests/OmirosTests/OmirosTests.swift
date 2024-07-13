@@ -81,6 +81,30 @@ class OmirosTests: XCTestCase {
         XCTAssertEqual(fetched?.count, 200)
     }
 
+    func testCounting() async throws {
+        var owner = Owner()
+
+        var ebony = Dog(ownerID: owner.id, name: "Ebony")
+        ebony.collarCaption = "Ebony"
+        ebony.collarCaption = nil
+
+        var ivory = Dog(ownerID: owner.id, name: "Ivory")
+        ivory.collarCaption = "Evory"
+        ivory.collarCaption = "Love Ivory"
+
+        owner.dogs = [ebony, ivory]
+
+        try await omiros.save(owner)
+
+        let ownerCount = try await omiros.count(Owner.self)
+        let dogCount = try await omiros.count(Dog.self)
+        let filteredDogCount = try await omiros.count(Dog.self, with: .init(.any([.like(.collarCaption, "%love%")])))
+
+        XCTAssertEqual(ownerCount, 1)
+        XCTAssertEqual(dogCount, 2)
+        XCTAssertEqual(filteredDogCount, 1)
+    }
+
     func testOrderingAndPagination() async throws {
         var entities: [Person] = []
 
@@ -218,12 +242,12 @@ class OmirosTests: XCTestCase {
 
         ebony.collarCaption = "Love Ebony"
         ivory.collarCaption = "Love Ivory"
-        owner.dogs = [ebony, ivory].sorted(by: { $0.collarCaption > $1.collarCaption })
+        owner.dogs = [ebony, ivory]
 
         try await omiros.save(owner)
 
         let owners = try await omiros.fetch(Owner.self)
-        let dogs = try await omiros.fetch(Dog.self).sorted(by: { $0.collarCaption > $1.collarCaption })
+        let dogs = try await omiros.fetch(Dog.self, with: .init(order: .ascending([.collarCaption])))
 
         XCTAssertEqual(owners.count, 1)
         XCTAssertEqual(dogs.count, 2)

@@ -131,7 +131,7 @@ struct Dog: Omirable, Equatable {
 
     var ownerID = ""
     var name = ""
-    var collarCaption = ""
+    var collarCaption: String?
 
     init(ownerID: String, name: String) {
         self.ownerID = ownerID
