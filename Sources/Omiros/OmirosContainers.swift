@@ -46,7 +46,7 @@ public final class OmirosInput<T: Omirable> {
     var primaryKeys: Set<String> = []
     var content: [String: SQLiteType] = [:]
     var relations: [String: AnyOmirosRelation] = [:]
-    var enclosed: [String: AnyOmirable] = [:]
+    var enclosed: [String: [AnyOmirable]] = [:]
 
     public func setPrimaryKey(_ key: T.OmirosKey) {
         primaryKeys.insert(key.stringValue)
@@ -57,7 +57,7 @@ public final class OmirosInput<T: Omirable> {
     }
 
     public func set<U: AnyOmirable>(_ value: U) {
-        enclosed[U.omirosName] = value
+        enclosed[U.omirosName, default: []].append(value)
     }
 
     public func set<U: SQLiteType, V: Omirable>(_ value: U, for key: T.OmirosKey, as relation: OmirosRelation<V>) {

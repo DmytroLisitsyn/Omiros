@@ -154,9 +154,11 @@ extension Omirable {
         }
         try statement.step()
 
-        for element in container.enclosed.values {
-            try element.setup(in: db)
-            try element.save(in: db)
+        for elements in container.enclosed.values {
+            try elements.first?.setup(in: db)
+            for element in elements {
+                try element.save(in: db)
+            }
         }
     }
 
