@@ -29,7 +29,7 @@ import Omiros
 
 struct Person: Omirable {
 
-    enum OmirosKey: CodingKey {
+    enum OmirosKey: AnyOmirosKey {
         case id
         case name
         case surname
@@ -83,7 +83,7 @@ struct Person: Omirable {
 
 struct Owner: Omirable {
 
-    enum OmirosKey: CodingKey {
+    enum OmirosKey: AnyOmirosKey {
         case id
         case name
         case dogs
@@ -118,7 +118,7 @@ struct Owner: Omirable {
 
 struct Dog: Omirable, Equatable {
 
-    enum OmirosKey: CodingKey {
+    enum OmirosKey: AnyOmirosKey {
         case id
         case ownerID
         case name

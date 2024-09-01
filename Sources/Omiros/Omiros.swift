@@ -68,13 +68,13 @@ public actor Omiros {
 
     public func fetchFirst<T: Omirable>(_ type: T.Type = T.self, with options: OmirosQueryOptions<T> = .init()) throws -> T? {
         let db = try connection.setup()
-        let entity = try T.init(with: options, db: db)
+        let entity = try T.init(in: db, options: options)
         return entity
     }
 
     public func fetch<T: Omirable>(_ type: T.Type = T.self, with options: OmirosQueryOptions<T> = .init()) throws -> [T] {
         let db = try connection.setup()
-        let entities = try Array<T>.init(with: options, db: db) ?? []
+        let entities = try [T].init(in: db, options: options) ?? []
         return entities
     }
 

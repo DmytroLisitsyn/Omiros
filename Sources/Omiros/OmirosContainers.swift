@@ -56,13 +56,13 @@ public struct OmirosInput<T: Omirable> {
         content[key.stringValue] = value
     }
 
-    public mutating func set<U: AnyOmirable>(_ value: U) {
-        enclosed[U.omirosName, default: []].append(value)
-    }
-
     public mutating func set<U: SQLiteType, V: Omirable>(_ value: U, for key: T.OmirosKey, as relation: OmirosRelation<V>) {
         content[key.stringValue] = value
         relations[key.stringValue] = relation
+    }
+
+    public mutating func set<U: AnyOmirable>(_ value: U) {
+        enclosed[U.omirosName, default: []].append(value)
     }
 
 }
@@ -72,15 +72,12 @@ public struct OmirosOutput<T: Omirable> {
     private weak var statement: SQLite.Statement?
     private var indexForColumnName: [String: Int32] = [:]
 
-    init(_ statement: SQLite.Statement?) {
+    init(_ statement: SQLite.Statement) {
         self.statement = statement
 
-        guard let statement = statement else { return }
-
-        let columns = (0..<statement.columnCount).map(statement.columnName)
-
-        for (index, column) in columns.enumerated() {
-            indexForColumnName[column] = Int32(index)
+        for columnIndex in 0..<statement.columnCount {
+            let columnName = statement.columnName(at: columnIndex)
+            indexForColumnName[columnName] = Int32(columnIndex)
         }
     }
 
@@ -101,7 +98,7 @@ public struct OmirosOutput<T: Omirable> {
             throw OmirosError.unavailableSQLiteStatement
         }
 
-        return try .init(with: options, db: statement.database)
+        return try valueType.init(in: statement.database, options: options)
     }
 
     public func get<U: Omirable>(_ valueType: [U].Type = [U].self, with options: OmirosQueryOptions<U>) throws -> [U] {
@@ -109,7 +106,7 @@ public struct OmirosOutput<T: Omirable> {
             throw OmirosError.unavailableSQLiteStatement
         }
         
-        return try valueType.init(with: options, db: statement.database) ?? []
+        return try valueType.init(in: statement.database, options: options) ?? []
     }
 
 }

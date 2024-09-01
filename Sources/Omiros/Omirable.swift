@@ -24,17 +24,21 @@
 
 import Foundation
 
+public protocol AnyOmirosKey: CodingKey {
+
+}
+
 public protocol AnyOmirable {
     static var omirosName: String { get }
 
-    init?(with options: AnyOmirosQueryOptions, db: SQLite) throws
+    init?(in db: SQLite, options: AnyOmirosQueryOptions) throws
     static func isSetup(in db: SQLite) throws -> Bool
     func setup(in db: SQLite) throws
     func save(in db: SQLite) throws
 }
 
 public protocol Omirable: AnyOmirable {
-    associatedtype OmirosKey: CodingKey
+    associatedtype OmirosKey: AnyOmirosKey
 
     init(container: OmirosOutput<Self>) throws
     func fill(container: inout OmirosInput<Self>)
@@ -46,7 +50,7 @@ extension Omirable {
         return "\(self)"
     }
 
-    public init?(with options: AnyOmirosQueryOptions, db: SQLite) throws {
+    public init?(in db: SQLite, options: AnyOmirosQueryOptions) throws {
         guard try Self.isSetup(in: db) else {
             return nil
         }
@@ -151,9 +155,9 @@ extension Omirable {
         }
         try statement.step()
 
-        for elements in container.enclosed.values {
-            try elements.first?.setup(in: db)
-            for element in elements {
+        for (_ , values) in container.enclosed {
+            try values.first?.setup(in: db)
+            for element in values {
                 try element.save(in: db)
             }
         }
@@ -161,14 +165,16 @@ extension Omirable {
 
 }
 
+// MARK: Optional
+
 extension Optional: AnyOmirable where Wrapped: Omirable {
 
     public static var omirosName: String {
         return Wrapped.omirosName
     }
 
-    public init(with options: AnyOmirosQueryOptions, db: SQLite) throws {
-        self = try Wrapped.init(with: options, db: db)
+    public init(in db: SQLite, options: AnyOmirosQueryOptions) throws {
+        self = try Wrapped.init(in: db, options: options)
     }
 
     public static func isSetup(in db: SQLite) throws -> Bool {
@@ -190,13 +196,15 @@ extension Optional: AnyOmirable where Wrapped: Omirable {
 
 }
 
+// MARK: Array
+
 extension Array: AnyOmirable where Element: Omirable {
 
     public static var omirosName: String {
         return Element.omirosName
     }
 
-    public init?(with options: AnyOmirosQueryOptions, db: SQLite) throws {
+    public init?(in db: SQLite, options: AnyOmirosQueryOptions) throws {
         guard try Element.isSetup(in: db) else {
             return nil
         }
