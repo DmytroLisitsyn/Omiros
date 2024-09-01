@@ -5,7 +5,7 @@ import PackageDescription
 
 let package = Package(
     name: "Omiros",
-    platforms: [.macOS(.v10_15), .iOS(.v13), .watchOS(.v6), .tvOS(.v13)],
+    platforms: [.macOS(.v11), .iOS(.v14), .watchOS(.v7), .tvOS(.v14)],
     products: [
         .library(name: "Omiros", targets: ["Omiros"])
     ],

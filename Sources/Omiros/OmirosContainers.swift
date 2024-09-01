@@ -41,33 +41,33 @@ public struct OmirosRelation<T: Omirable>: AnyOmirosRelation {
 
 }
 
-public final class OmirosInput<T: Omirable> {
+public struct OmirosInput<T: Omirable> {
 
     var primaryKeys: Set<String> = []
     var content: [String: SQLiteType] = [:]
     var relations: [String: AnyOmirosRelation] = [:]
     var enclosed: [String: [AnyOmirable]] = [:]
 
-    public func setPrimaryKey(_ key: T.OmirosKey) {
+    public mutating func setPrimaryKey(_ key: T.OmirosKey) {
         primaryKeys.insert(key.stringValue)
     }
 
-    public func set<U: SQLiteType>(_ value: U, for key: T.OmirosKey) {
+    public mutating func set<U: SQLiteType>(_ value: U, for key: T.OmirosKey) {
         content[key.stringValue] = value
     }
 
-    public func set<U: AnyOmirable>(_ value: U) {
+    public mutating func set<U: AnyOmirable>(_ value: U) {
         enclosed[U.omirosName, default: []].append(value)
     }
 
-    public func set<U: SQLiteType, V: Omirable>(_ value: U, for key: T.OmirosKey, as relation: OmirosRelation<V>) {
+    public mutating func set<U: SQLiteType, V: Omirable>(_ value: U, for key: T.OmirosKey, as relation: OmirosRelation<V>) {
         content[key.stringValue] = value
         relations[key.stringValue] = relation
     }
 
 }
 
-public final class OmirosOutput<T: Omirable> {
+public struct OmirosOutput<T: Omirable> {
 
     private weak var statement: SQLite.Statement?
     private var indexForColumnName: [String: Int32] = [:]

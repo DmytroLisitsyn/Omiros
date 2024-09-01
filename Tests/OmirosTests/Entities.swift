@@ -67,7 +67,7 @@ struct Person: Omirable {
         homePageURL = try container.get(for: .homePageURL)
     }
 
-    func fill(container: OmirosInput<Person>) {
+    func fill(container: inout OmirosInput<Person>) {
         container.set(id, for: .id)
         container.set(name, for: .name)
         container.set(surname, for: .surname)
@@ -104,7 +104,7 @@ struct Owner: Omirable {
         dogs = try container.get(with: .init(.equal(.ownerID, id)))
     }
 
-    func fill(container: OmirosInput<Owner>) {
+    func fill(container: inout OmirosInput<Owner>) {
         container.setPrimaryKey(.id)
 
         container.set(id, for: .id)
@@ -144,7 +144,7 @@ struct Dog: Omirable, Equatable {
         collarCaption = try container.get(for: .collarCaption)
     }
 
-    func fill(container: OmirosInput<Dog>) {
+    func fill(container: inout OmirosInput<Dog>) {
         container.setPrimaryKey(.id)
 
         container.set(id, for: .id)

@@ -24,6 +24,7 @@
 
 import Foundation
 import SQLite3
+import os
 
 public final class SQLite {
 
@@ -32,10 +33,14 @@ public final class SQLite {
         case memory
     }
 
+    let config: String
     let pointer: OpaquePointer
 
-    public init(in location: Location) throws {
-        let config: String
+    public var logger: os.Logger?
+
+    public init(in location: Location, logger: os.Logger? = nil) throws {
+        self.logger = logger
+
         switch location {
         case .file(let name):
             config = try SQLite.makeFilePath(name: name)
@@ -46,17 +51,21 @@ public final class SQLite {
         var pointer: OpaquePointer!
         let result = sqlite3_open(config, &pointer)
         self.pointer = pointer
-
         try processResult(result)
+
+        logger?.log("SQLite connection opened: \(self.config)")
+
         try execute("PRAGMA foreign_keys=ON;")
     }
 
     deinit {
         sqlite3_close(pointer)
+        logger?.log("SQLite connection closed: \(self.config)")
     }
 
     public func prepare(_ query: String) throws -> Statement {
-        try Statement(query, database: self)
+        logger?.log("\(query)")
+        return try Statement(query, database: self)
     }
 
     public func execute(_ query: String) throws {

@@ -24,13 +24,15 @@
 
 import XCTest
 @testable import Omiros
+import os
 
 class OmirosTests: XCTestCase {
 
     var omiros: Omiros!
 
     override func setUp() {
-        omiros = Omiros(named: "MyStorage")
+        let logger = os.Logger(subsystem: "Omiros", category: "OmirosTests")
+        omiros = Omiros(named: "OmirosTests", logger: logger)
     }
 
     override func tearDown() async throws {

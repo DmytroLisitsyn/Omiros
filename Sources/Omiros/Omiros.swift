@@ -24,6 +24,7 @@
 
 import Foundation
 import Combine
+import os
 
 public actor Omiros {
 
@@ -33,12 +34,16 @@ public actor Omiros {
         self.connection = connection
     }
 
-    public init(named name: String) {
-        self.init(connection: SQLiteConnectionToFile(named: name))
+    public init(named name: String, logger: os.Logger? = nil) {
+        let connection = SQLiteConnectionToFile(named: name)
+        connection.logger = logger
+        self.init(connection: connection)
     }
 
-    public static func inMemory() -> Omiros {
-        return Omiros(connection: SQLiteConnectionToMemory())
+    public static func inMemory(logger: os.Logger? = nil) -> Omiros {
+        let connection = SQLiteConnectionToMemory()
+        connection.logger = logger
+        return Omiros(connection: connection)
     }
 
     public func save<T: Omirable>(_ entity: T) throws {
@@ -109,11 +114,14 @@ public actor Omiros {
 
 // MARK: - SQLiteConnection
 
-private protocol SQLiteConnection {
+private protocol SQLiteConnection: AnyObject {
+    var logger: os.Logger? { get set }
     func setup() throws -> SQLite
 }
 
 private final class SQLiteConnectionToFile: SQLiteConnection {
+
+    var logger: os.Logger?
 
     let name: String
 
@@ -122,12 +130,17 @@ private final class SQLiteConnectionToFile: SQLiteConnection {
     }
 
     func setup() throws -> SQLite {
-        return try SQLite(in: .file(name: name))
+        let db = try SQLite(in: .file(name: name), logger: logger)
+        return db
     }
 
 }
 
 private final class SQLiteConnectionToMemory: SQLiteConnection {
+
+    var logger: os.Logger? {
+        didSet { db?.logger = logger }
+    }
 
     private var db: SQLite?
 
@@ -139,7 +152,7 @@ private final class SQLiteConnectionToMemory: SQLiteConnection {
         if let db = db {
             return db
         } else {
-            let db = try SQLite(in: .memory)
+            let db = try SQLite(in: .memory, logger: logger)
             self.db = db
             return db
         }

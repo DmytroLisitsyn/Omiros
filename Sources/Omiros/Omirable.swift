@@ -37,7 +37,7 @@ public protocol Omirable: AnyOmirable {
     associatedtype OmirosKey: CodingKey
 
     init(container: OmirosOutput<Self>) throws
-    func fill(container: OmirosInput<Self>)
+    func fill(container: inout OmirosInput<Self>)
 }
 
 extension Omirable {
@@ -72,8 +72,8 @@ extension Omirable {
     }
 
     public func setup(in db: SQLite) throws {
-        let container = OmirosInput<Self>()
-        fill(container: container)
+        var container = OmirosInput<Self>()
+        fill(container: &container)
 
         if try Self.isSetup(in: db) {
             var existingColumns: Set<String> = []
@@ -118,8 +118,8 @@ extension Omirable {
     }
 
     public func save(in db: SQLite) throws {
-        let container = OmirosInput<Self>()
-        fill(container: container)
+        var container = OmirosInput<Self>()
+        fill(container: &container)
 
         let columnString = container.content.keys.joined(separator: ",")
         let formatString = Array(repeating: "?", count: container.content.count).joined(separator: ",")
