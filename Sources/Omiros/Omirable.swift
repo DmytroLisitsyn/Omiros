@@ -96,24 +96,21 @@ extension Omirable {
                 }
             }
         } else {
-            var columns: [String] = []
+            var components: [String] = []
 
             for (key, sqlType) in container.content {
-                var typeDescription = type(of: sqlType).sqLiteName
-
-                if container.primaryKeys.contains(key) {
-                    typeDescription += " PRIMARY KEY"
-                }
-
-                columns.append("\(key) \(typeDescription)")
+                components.append("\(key) \(type(of: sqlType).sqLiteName)")
             }
 
             for (key, relation) in container.relations {
-                columns.append("FOREIGN KEY(\(key)) REFERENCES \(relation.type.omirosName)(\(relation.key)) ON DELETE CASCADE")
+                components.append("FOREIGN KEY(\(key)) REFERENCES \(relation.type.omirosName)(\(relation.key)) ON DELETE CASCADE")
             }
 
-            let description = columns.joined(separator: ",")
-            try db.execute("CREATE TABLE \(Self.omirosName)(\(description));")
+            if !container.primaryKeys.isEmpty {
+                components.append("PRIMARY KEY (\(container.primaryKeys.joined(separator: ",")))")
+            }
+
+            try db.execute("CREATE TABLE \(Self.omirosName)(\(components.joined(separator: ",")));")
         }
     }
 
