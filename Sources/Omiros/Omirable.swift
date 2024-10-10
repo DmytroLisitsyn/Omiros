@@ -82,7 +82,7 @@ extension Omirable {
         if try Self.isSetup(in: db) {
             var existingColumns: Set<String> = []
 
-            let statement = try db.prepare("PRAGMA table_info(\(Self.omirosName))").step()
+            var statement = try db.prepare("PRAGMA table_info(\(Self.omirosName))").step()
             while statement.hasMoreRows {
                 let column = String.column(at: 1, statement: statement)
                 existingColumns.insert(column)
@@ -98,6 +98,29 @@ extension Omirable {
                 if let relation = container.relations[column] {
                     try db.execute("ALTER TABLE \(Self.omirosName) ADD FOREIGN KEY(\(column)) REFERENCES \(relation.type.omirosName)(\(relation.key)) ON DELETE CASCADE;")
                 }
+            }
+
+            var existingIndices: Set<String> = []
+            statement = try db.prepare("PRAGMA index_list(\(Self.omirosName));").step()
+            while statement.hasMoreRows {
+                let name = String.column(at: 1, statement: statement)
+                if name.hasPrefix("omiros_") {
+                    existingIndices.insert(name)
+                }
+
+                try statement.step()
+            }
+
+            for index in container.indices {
+                if existingIndices.contains(index.name) {
+                    existingIndices.remove(index.name)
+                } else {
+                    try db.execute("CREATE INDEX \(index.name) ON \(Self.omirosName)(\(index.keys.joined(separator: ",")));")
+                }
+            }
+
+            for existingIndex in existingIndices {
+                try db.execute("DROP INDEX \(existingIndex);")
             }
         } else {
             var components: [String] = []
@@ -115,6 +138,10 @@ extension Omirable {
             }
 
             try db.execute("CREATE TABLE \(Self.omirosName)(\(components.joined(separator: ",")));")
+
+            for index in container.indices {
+                try db.execute("CREATE INDEX \(index.name) ON \(Self.omirosName)(\(index.keys.joined(separator: ",")));")
+            }
         }
     }
 

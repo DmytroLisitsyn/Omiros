@@ -31,7 +31,7 @@ class OmirosTests: XCTestCase {
     var omiros: Omiros!
 
     override func setUp() {
-        omiros = Omiros(named: "OmirosTests")
+        omiros = Omiros(named: "OmirosTests", logger: os.Logger(subsystem: "Omiros", category: "OmirosTests"))
     }
 
     override func tearDown() async throws {
@@ -45,11 +45,11 @@ class OmirosTests: XCTestCase {
 
         let fetched = try await omiros.fetchFirst(Person.self)
 
-        XCTAssertEqual(entity.name, fetched?.name)
-        XCTAssertEqual(entity.surname, fetched?.surname)
+        XCTAssertEqual(entity.firstName, fetched?.firstName)
+        XCTAssertEqual(entity.lastName, fetched?.lastName)
         XCTAssertEqual(entity.dateOfBirth, fetched?.dateOfBirth)
         XCTAssertEqual(entity.height, fetched?.height)
-        XCTAssertEqual(entity.consumedWine, fetched?.consumedWine)
+        XCTAssertEqual(entity.additionalData, fetched?.additionalData)
         XCTAssertEqual(entity.homePageURL, fetched?.homePageURL)
     }
 
@@ -59,22 +59,22 @@ class OmirosTests: XCTestCase {
             entities.append(.init())
         }
         for _ in 0..<100 {
-            entities.append(Person(name: "Jack", surname: "White"))
-            entities.append(Person(name: "Jack", surname: "Black"))
-            entities.append(Person(name: "Jack", surname: "Gray"))
-            entities.append(Person(name: "Peter", surname: "Parker"))
+            entities.append(Person(firstName: "Jack", lastName: "White"))
+            entities.append(Person(firstName: "Jack", lastName: "Black"))
+            entities.append(Person(firstName: "Jack", lastName: "Gray"))
+            entities.append(Person(firstName: "Peter", lastName: "Parker"))
         }
-        entities.append(Person(name: "Brandon", surname: "Smith"))
+        entities.append(Person(firstName: "Brandon", lastName: "Smith"))
 
         entities.shuffle()
 
         try await omiros.save(entities)
 
         let options = OmirosQueryOptions<Person>([
-            .equal(.name, "Jack"),
+            .equal(.firstName, "Jack"),
             .any([
-                .equal(.surname, "White"),
-                .equal(.surname, "Black")
+                .equal(.lastName, "White"),
+                .equal(.lastName, "Black")
             ])
         ])
 
@@ -110,57 +110,57 @@ class OmirosTests: XCTestCase {
         var entities: [Person] = []
 
         for _ in 0..<100 {
-            entities.append(Person(name: "Jack", surname: "White"))
+            entities.append(Person(firstName: "Jack", lastName: "White"))
         }
         for _ in 0..<100 {
-            entities.append(Person(name: "Jack", surname: "Black"))
+            entities.append(Person(firstName: "Jack", lastName: "Black"))
         }
         for _ in 0..<100 {
-            entities.append(Person(name: "Peter", surname: "Parker"))
+            entities.append(Person(firstName: "Peter", lastName: "Parker"))
         }
         for _ in 0..<100 {
-            entities.append(Person(name: "Brandon", surname: "Smith"))
+            entities.append(Person(firstName: "Brandon", lastName: "Smith"))
         }
 
         try await omiros.save(entities)
 
         var options = OmirosQueryOptions<Person>()
-        options.order = .ascending([.name, .surname])
+        options.order = .ascending([.firstName, .lastName])
         options.offset = 200
         options.limit = 100
 
         let fetched = try? await omiros.fetch(Person.self, with: options)
         XCTAssertEqual(fetched?.count, 100)
 
-        XCTAssertEqual(fetched?.first?.name, "Jack")
-        XCTAssertEqual(fetched?.first?.surname, "White")
+        XCTAssertEqual(fetched?.first?.firstName, "Jack")
+        XCTAssertEqual(fetched?.first?.lastName, "White")
 
-        XCTAssertEqual(fetched?.last?.name, "Jack")
-        XCTAssertEqual(fetched?.last?.surname, "White")
+        XCTAssertEqual(fetched?.last?.firstName, "Jack")
+        XCTAssertEqual(fetched?.last?.lastName, "White")
     }
 
     func testNotInQueryParameters() async throws {
         var entities: [Person] = []
 
         for _ in 0..<10 {
-            entities.append(Person(name: "Jack", surname: "White"))
+            entities.append(Person(firstName: "Jack", lastName: "White"))
         }
         for _ in 0..<10 {
-            entities.append(Person(name: "Jack", surname: "Black"))
+            entities.append(Person(firstName: "Jack", lastName: "Black"))
         }
         for _ in 0..<10 {
-            entities.append(Person(name: "Peter", surname: "Parker", height: 190))
+            entities.append(Person(firstName: "Peter", lastName: "Parker", height: 190))
         }
         for _ in 0..<10 {
-            entities.append(Person(name: "Rihanna"))
+            entities.append(Person(firstName: "Rihanna"))
         }
-        entities.append(Person(name: "Bree", surname: "Whale", height: 180))
+        entities.append(Person(firstName: "Bree", lastName: "Whale", height: 180))
 
         try await omiros.save(entities)
 
         var options = OmirosQueryOptions<Person>(
-            .not(.equal(.name, "Jack")),
-            .not(.equal(.name, "Rihanna"))
+            .not(.equal(.firstName, "Jack")),
+            .not(.equal(.firstName, "Rihanna"))
         )
         var fetched = try? await omiros.fetch(Person.self, with: options)
 
@@ -168,15 +168,15 @@ class OmirosTests: XCTestCase {
 
         options = OmirosQueryOptions<Person>(
             .not(.all([
-                .equal(.name, "Jack"),
-                .equal(.surname, "Black")
+                .equal(.firstName, "Jack"),
+                .equal(.lastName, "Black")
             ]))
         )
         fetched = try? await omiros.fetch(Person.self, with: options)
 
         XCTAssertEqual(fetched?.count, 31)
 
-        options = OmirosQueryOptions<Person>(.not(.equal(.surname, nil)))
+        options = OmirosQueryOptions<Person>(.not(.equal(.lastName, nil)))
         fetched = try? await omiros.fetch(Person.self, with: options)
 
         XCTAssertEqual(fetched?.count, 31)
@@ -186,7 +186,7 @@ class OmirosTests: XCTestCase {
 
         XCTAssertEqual(fetched?.count, 30)
 
-        options = OmirosQueryOptions<Person>(.not(.like(.surname, "Wh%")))
+        options = OmirosQueryOptions<Person>(.not(.like(.lastName, "Wh%")))
         fetched = try? await omiros.fetch(Person.self, with: options)
 
         XCTAssertEqual(fetched?.count, 20)
@@ -294,6 +294,30 @@ class OmirosTests: XCTestCase {
 
         fetched = try await omiros.fetch(Person.self)
         XCTAssertEqual(fetched.count, 0)
+    }
+
+    func testIndexing() async throws {
+        var entities: [Person] = []
+        entities.append(.init(id: "0", firstName: "Paulino", lastName: "Scheyer"))
+        entities.append(.init(id: "1", firstName: "Julieann", lastName: "Waeles"))
+        entities.append(.init(id: "2", firstName: "Haitham", lastName: "Petru"))
+        entities.append(.init(id: "3", firstName: "Kary", lastName: "Beyreiss"))
+        entities.append(.init(id: "4", firstName: "Cvetelina", lastName: "Ibarguren"))
+        entities.append(.init(id: "5", firstName: "Joy", lastName: "Agibaloff"))
+        entities.append(.init(id: "6", firstName: "Jianfang", lastName: "Walls"))
+        entities.append(.init(id: "7", firstName: "Cristinela", lastName: "Murchadh"))
+        entities.append(.init(id: "8", firstName: "Bekkaye", lastName: "Shields"))
+        entities.append(.init(id: "9", firstName: "Kristy", lastName: "Shields"))
+        entities.append(.init(id: "10", firstName: "Kristy", lastName: "Handric"))
+        try await omiros.save(entities)
+
+        let fetched = try await omiros.fetch(Person.self, with: .init(order: .ascending([.lastName])))
+
+        XCTAssertEqual(fetched.first?.firstName, "Joy")
+        XCTAssertEqual(fetched.first?.lastName, "Agibaloff")
+
+        XCTAssertEqual(fetched.last?.firstName, "Jianfang")
+        XCTAssertEqual(fetched.last?.lastName, "Walls")
     }
 
 }

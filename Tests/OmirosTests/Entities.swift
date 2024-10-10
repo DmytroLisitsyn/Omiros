@@ -31,26 +31,26 @@ struct Person: Omirable {
 
     enum OmirosKey: AnyOmirosKey {
         case id
-        case name
-        case surname
+        case firstName
+        case lastName
         case height
         case dateOfBirth
-        case consumedWine
         case homePageURL
+        case additionalData
     }
 
     var id = ""
-    var name = ""
-    var surname: String?
+    var firstName = ""
+    var lastName: String?
     var height: Double
     var dateOfBirth: Date
-    var consumedWine: Data? = "Bottle per year".data(using: .utf8)
     var homePageURL = URL(string: "https://github.com/")
+    var additionalData: Data? = "Some additional data".data(using: .utf8)
 
-    init(id: String = UUID().uuidString, name: String = "John Doe", surname: String? = nil, height: Double = 172, dateOfBirth: Date = Date(timeIntervalSince1970: 0)) {
+    init(id: String = UUID().uuidString, firstName: String = "John", lastName: String? = nil, height: Double = 172, dateOfBirth: Date = Date(timeIntervalSince1970: 0)) {
         self.id = id
-        self.name = name
-        self.surname = surname
+        self.firstName = firstName
+        self.lastName = lastName
         self.height = height
         self.dateOfBirth = dateOfBirth
     }
@@ -59,22 +59,24 @@ struct Person: Omirable {
         self.init()
 
         id = try container.get(for: .id)
-        name = try container.get(for: .name)
-        surname = try container.get(for: .surname)
+        firstName = try container.get(for: .firstName)
+        lastName = try container.get(for: .lastName)
         height = try container.get(for: .height)
         dateOfBirth = try container.get(for: .dateOfBirth)
-        consumedWine = try container.get(for: .consumedWine)
+        additionalData = try container.get(for: .additionalData)
         homePageURL = try container.get(for: .homePageURL)
     }
 
     func fill(container: inout OmirosInput<Person>) {
+        container.setIndex([.lastName, .firstName])
+
         container.set(id, for: .id)
-        container.set(name, for: .name)
-        container.set(surname, for: .surname)
+        container.set(firstName, for: .firstName)
+        container.set(lastName, for: .lastName)
         container.set(height, for: .height)
         container.set(dateOfBirth, for: .dateOfBirth)
-        container.set(consumedWine, for: .consumedWine)
         container.set(homePageURL, for: .homePageURL)
+        container.set(additionalData, for: .additionalData)
     }
 
 }
