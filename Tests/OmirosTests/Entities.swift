@@ -68,7 +68,7 @@ struct Person: Omirable {
     }
 
     func fill(container: inout OmirosInput<Person>) {
-        container.setIndex([.lastName, .firstName])
+        container.setIndex(.lastName, .firstName)
 
         container.set(id, for: .id)
         container.set(firstName, for: .firstName)

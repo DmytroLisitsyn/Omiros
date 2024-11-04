@@ -90,7 +90,7 @@ extension Omirable {
                 try statement.step()
             }
 
-            for (column, value) in container.content where !existingColumns.contains(column) {
+            for (column, value) in container.columns where !existingColumns.contains(column) {
                 existingColumns.insert(column)
 
                 try db.execute("ALTER TABLE \(Self.omirosName) ADD \(column) \(type(of: value).sqLiteName);")
@@ -125,7 +125,7 @@ extension Omirable {
         } else {
             var components: [String] = []
 
-            for (key, sqlType) in container.content {
+            for (key, sqlType) in container.columns {
                 components.append("\(key) \(type(of: sqlType).sqLiteName)")
             }
 
@@ -149,14 +149,14 @@ extension Omirable {
         var container = OmirosInput<Self>()
         fill(container: &container)
 
-        let columnString = container.content.keys.joined(separator: ",")
-        let formatString = Array(repeating: "?", count: container.content.count).joined(separator: ",")
+        let columnString = container.columns.keys.joined(separator: ",")
+        let formatString = Array(repeating: "?", count: container.columns.count).joined(separator: ",")
 
         var query = "INSERT INTO \(Self.omirosName)(\(columnString)) VALUES(\(formatString))"
 
         if !container.primaryKeys.isEmpty {
             let conflictedKeysString = container.primaryKeys.joined(separator: ",")
-            let keys = Set(container.content.keys).subtracting(container.primaryKeys)
+            let keys = Set(container.columns.keys).subtracting(container.primaryKeys)
 
             let onConflictQuery: String
             if keys.isEmpty {
@@ -177,7 +177,7 @@ extension Omirable {
         query += ";"
 
         let statement = try db.prepare(query)
-        for (index, value) in container.content.values.enumerated() {
+        for (index, value) in container.columns.values.enumerated() {
             try statement.bind(value, at: Int32(index + 1))
         }
         try statement.step()

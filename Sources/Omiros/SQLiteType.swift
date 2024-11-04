@@ -145,7 +145,7 @@ extension String: SQLiteType {
     }
 
     public static func column(at index: Int32, statement: SQLite.Statement) -> String {
-        return sqlite3_column_text(statement.pointer, index).flatMap({ String(cString: $0) }) ?? ""
+        return sqlite3_column_text(statement.pointer, index).flatMap(String.init(cString:)) ?? ""
     }
 
 }
@@ -207,11 +207,11 @@ extension URL: SQLiteType {
     }
 
     public func bind(at index: Int32, statement: SQLite.Statement) -> Int32 {
-        return sqlite3_bind_text(statement.pointer, index, NSString(string: absoluteString).utf8String, -1, nil)
+        return absoluteString.bind(at: index, statement: statement)
     }
 
     public static func column(at index: Int32, statement: SQLite.Statement) -> URL {
-        let string = sqlite3_column_text(statement.pointer, index).flatMap({ String(cString: $0) }) ?? ""
+        let string = String.column(at: index, statement: statement)
         return URL(string: string)!
     }
 

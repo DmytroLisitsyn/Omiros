@@ -45,7 +45,7 @@ public struct OmirosInput<T: Omirable> {
 
     var primaryKeys: Set<String> = []
     var indices: [(name: String, keys: [String])] = []
-    var content: [String: SQLiteType] = [:]
+    var columns: [String: SQLiteType] = [:]
     var relations: [String: AnyOmirosRelation] = [:]
     var enclosed: [String: [AnyOmirable]] = [:]
 
@@ -53,23 +53,23 @@ public struct OmirosInput<T: Omirable> {
         primaryKeys.insert(key.stringValue)
     }
 
-    public mutating func setIndex(_ keys: [T.OmirosKey]) {
-        let keys = keys.map(\.stringValue)
-        let name = "omiros_\(keys.joined(separator: "_"))"
-        indices.append((name, keys))
+    public mutating func setIndex(_ keys: T.OmirosKey...) {
+        let keyStrings = keys.map(\.stringValue)
+        let name = "omiros_\(keyStrings.joined(separator: "_"))"
+        indices.append((name, keyStrings))
     }
 
     public mutating func set<U: SQLiteType>(_ value: U, for key: T.OmirosKey) {
-        content[key.stringValue] = value
+        columns[key.stringValue] = value
     }
 
     public mutating func set<U: SQLiteType, V: Omirable>(_ value: U, for key: T.OmirosKey, as relation: OmirosRelation<V>) {
-        content[key.stringValue] = value
+        columns[key.stringValue] = value
         relations[key.stringValue] = relation
     }
 
-    public mutating func set<U: AnyOmirable>(_ value: U) {
-        enclosed[U.omirosName, default: []].append(value)
+    public mutating func set<U: AnyOmirable>(_ entity: U) {
+        enclosed[U.omirosName, default: []].append(entity)
     }
 
 }
@@ -100,20 +100,20 @@ public struct OmirosOutput<T: Omirable> {
         return statement.column(at: index, type: valueType)
     }
 
-    public func get<U: Omirable>(_ valueType: U.Type = U.self, with options: OmirosQueryOptions<U>) throws -> U? {
+    public func get<U: Omirable>(_ entityType: U.Type = U.self, with options: OmirosQueryOptions<U>) throws -> U? {
         guard let statement = statement else {
             throw OmirosError.unavailableSQLiteStatement
         }
 
-        return try valueType.init(in: statement.database, options: options)
+        return try entityType.init(in: statement.database, options: options)
     }
 
-    public func get<U: Omirable>(_ valueType: [U].Type = [U].self, with options: OmirosQueryOptions<U>) throws -> [U] {
+    public func get<U: Omirable>(_ entityType: [U].Type = [U].self, with options: OmirosQueryOptions<U>) throws -> [U] {
         guard let statement = statement else {
             throw OmirosError.unavailableSQLiteStatement
         }
         
-        return try valueType.init(in: statement.database, options: options) ?? []
+        return try entityType.init(in: statement.database, options: options) ?? []
     }
 
 }

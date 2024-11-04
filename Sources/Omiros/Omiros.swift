@@ -47,38 +47,35 @@ public actor Omiros {
     }
 
     public func save<T: Omirable>(_ entity: T) throws {
-        let db = try connection.setup()
-        try db.execute("BEGIN TRANSACTION;")
-
-        try entity.setup(in: db)
-        try entity.save(in: db)
-
-        try db.execute("END TRANSACTION;")
+        try save([entity])
     }
     
-    public func save<T: Omirable>(_ list: [T]) throws {
+    public func save<T: Omirable>(_ entities: [T]) throws {
         let db = try connection.setup()
         try db.execute("BEGIN TRANSACTION;")
 
-        try list.first?.setup(in: db)
-        try list.save(in: db)
+        try entities.first?.setup(in: db)
+        try entities.save(in: db)
 
         try db.execute("END TRANSACTION;")
     }
 
-    public func fetchFirst<T: Omirable>(_ type: T.Type = T.self, with options: OmirosQueryOptions<T> = .init()) throws -> T? {
+    nonisolated
+    public func fetchFirst<T: Omirable>(_ type: T.Type = T.self, with options: OmirosQueryOptions<T> = .init()) async throws -> T? {
         let db = try connection.setup()
         let entity = try T.init(in: db, options: options)
         return entity
     }
 
-    public func fetch<T: Omirable>(_ type: T.Type = T.self, with options: OmirosQueryOptions<T> = .init()) throws -> [T] {
+    nonisolated
+    public func fetch<T: Omirable>(_ type: T.Type = T.self, with options: OmirosQueryOptions<T> = .init()) async throws -> [T] {
         let db = try connection.setup()
         let entities = try [T].init(in: db, options: options) ?? []
         return entities
     }
 
-    public func count<T: Omirable>(_ type: T.Type = T.self, with options: OmirosQueryOptions<T> = .init()) throws -> Int {
+    nonisolated
+    public func count<T: Omirable>(_ type: T.Type = T.self, with options: OmirosQueryOptions<T> = .init()) async throws -> Int {
         let db = try connection.setup()
 
         guard try T.isSetup(in: db) else {

@@ -31,7 +31,8 @@ class OmirosTests: XCTestCase {
     var omiros: Omiros!
 
     override func setUp() {
-        omiros = Omiros(named: "OmirosTests", logger: os.Logger(subsystem: "Omiros", category: "OmirosTests"))
+//        let logger = os.Logger(subsystem: "Omiros", category: "OmirosTests")
+        omiros = Omiros(named: "OmirosTests", logger: nil)
     }
 
     override func tearDown() async throws {
