@@ -24,18 +24,52 @@
 
 import Foundation
 
-public protocol AnyOmirosKey: CodingKey {
-
-}
+// MARK: - AnyOmirable
 
 public protocol AnyOmirable {
     static var omirosName: String { get }
 
     init?(in db: SQLite, options: AnyOmirosQueryOptions) throws
-    static func isSetup(in db: SQLite) throws -> Bool
-    func setup(in db: SQLite) throws
     func save(in db: SQLite) throws
+    static func count(in db: SQLite, options: AnyOmirosQueryOptions) throws -> Int
+    static func delete(in db: SQLite, options: AnyOmirosQueryOptions) throws
+    static func isSetup(in db: SQLite) throws -> Bool
 }
+
+extension AnyOmirable {
+
+    public static func count(in db: SQLite, options: AnyOmirosQueryOptions) throws -> Int {
+        guard try isSetup(in: db) else {
+            return 0
+        }
+
+        let query = "SELECT COUNT(*) FROM \(omirosName)\(options.sqlWhereClause());"
+        let statement = try db.prepare(query).step()
+        let count: Int = statement.column(at: 0)
+        return count
+    }
+
+    public static func delete(in db: SQLite, options: AnyOmirosQueryOptions) throws {
+        guard try isSetup(in: db) else { return }
+
+        try db.execute("DELETE FROM \(omirosName)\(options.sqlWhereClause());")
+    }
+
+    public static func isSetup(in db: SQLite) throws -> Bool {
+        let query = "SELECT name FROM sqlite_master WHERE type='table' AND name='\(omirosName)';"
+        let statement = try db.prepare(query).step()
+        return statement.hasMoreRows
+    }
+
+}
+
+// MARK: - AnyOmirosKey
+
+public protocol AnyOmirosKey: CodingKey {
+
+}
+
+// MARK: - Omirable
 
 public protocol Omirable: AnyOmirable {
     associatedtype OmirosKey: AnyOmirosKey
@@ -57,7 +91,6 @@ extension Omirable {
 
         var options = options
         options.limit = 1
-
         let query = "SELECT * FROM \(Self.omirosName)\(options.sqlWhereClause());"
         let statement = try db.prepare(query).step()
 
@@ -69,16 +102,109 @@ extension Omirable {
         }
     }
 
-    public static func isSetup(in db: SQLite) throws -> Bool {
-        let query = "SELECT name FROM sqlite_master WHERE type='table' AND name='\(omirosName)';"
-        let statement = try db.prepare(query).step()
-        return statement.hasMoreRows
+    public func save(in db: SQLite) throws {
+        try [self].save(in: db)
     }
 
-    public func setup(in db: SQLite) throws {
-        var container = OmirosInput<Self>()
-        fill(container: &container)
+}
 
+// MARK: - Optional
+
+extension Optional: AnyOmirable where Wrapped: Omirable {
+
+    public static var omirosName: String {
+        return Wrapped.omirosName
+    }
+
+    public init(in db: SQLite, options: AnyOmirosQueryOptions) throws {
+        self = try Wrapped.init(in: db, options: options)
+    }
+
+    public func save(in db: SQLite) throws {
+        try self?.save(in: db)
+    }
+
+}
+
+// MARK: - Array
+
+extension Array: AnyOmirable where Element: Omirable {
+
+    public static var omirosName: String {
+        return Element.omirosName
+    }
+
+    public init?(in db: SQLite, options: AnyOmirosQueryOptions) throws {
+        guard try Element.isSetup(in: db) else {
+            return nil
+        }
+
+        let query = "SELECT * FROM \(Element.omirosName)\(options.sqlWhereClause());"
+        let statement = try db.prepare(query).step()
+
+        self.init()
+
+        while statement.hasMoreRows {
+            let container = OmirosOutput<Element>(statement)
+            let entity = try Element(container: container)
+            append(entity)
+            try statement.step()
+        }
+    }
+
+    public func save(in db: SQLite) throws {
+        guard count > 0 else { return }
+
+        var index = 0
+        var container = OmirosInput<Element>()
+        self[index].fill(container: &container)
+
+        let columnKeys = container.columns.keys
+        let joinedColumnList = columnKeys.joined(separator: ",")
+        let formatString = [String](repeating: "?", count: columnKeys.count).joined(separator: ",")
+        var query = "INSERT INTO \(Self.omirosName)(\(joinedColumnList)) VALUES(\(formatString))"
+
+        if !container.primaryKeys.isEmpty {
+            let conflictedKeysString = container.primaryKeys.joined(separator: ",")
+            let keys = Set(columnKeys).subtracting(container.primaryKeys)
+            if keys.isEmpty {
+                query += " ON CONFLICT(\(conflictedKeysString)) DO NOTHING"
+            } else {
+                let updateString = keys.map({ "\($0)=excluded.\($0)" }).joined(separator: ",")
+                query += " ON CONFLICT(\(conflictedKeysString)) DO UPDATE SET \(updateString)"
+            }
+        }
+
+        query += ";"
+
+        try setup(in: db, with: container)
+
+        while true {
+            let statement = try db.prepare(query)
+            for (index, columnKey) in columnKeys.enumerated() {
+                try statement.bind(container.columns[columnKey]!, at: Int32(index + 1))
+            }
+            try statement.step()
+
+            for (_ , enclosedEntities) in container.enclosed {
+                for (enclosedEntity, deleteOptions) in enclosedEntities {
+                    if let options = deleteOptions {
+                        try type(of: enclosedEntity).delete(in: db, options: options)
+                    }
+
+                    try enclosedEntity.save(in: db)
+                }
+            }
+
+            index += 1
+            guard index < count else { break }
+
+            container = OmirosInput<Element>()
+            self[index].fill(container: &container)
+        }
+    }
+
+    private func setup(in db: SQLite, with container: OmirosInput<Element>) throws {
         if try Self.isSetup(in: db) {
             var existingColumns: Set<String> = []
 
@@ -142,130 +268,6 @@ extension Omirable {
             for index in container.indices {
                 try db.execute("CREATE INDEX \(index.name) ON \(Self.omirosName)(\(index.keys.joined(separator: ",")));")
             }
-        }
-    }
-
-    public func save(in db: SQLite) throws {
-        var container = OmirosInput<Self>()
-        fill(container: &container)
-
-        let columnString = container.columns.keys.joined(separator: ",")
-        let formatString = Array(repeating: "?", count: container.columns.count).joined(separator: ",")
-
-        var query = "INSERT INTO \(Self.omirosName)(\(columnString)) VALUES(\(formatString))"
-
-        if !container.primaryKeys.isEmpty {
-            let conflictedKeysString = container.primaryKeys.joined(separator: ",")
-            let keys = Set(container.columns.keys).subtracting(container.primaryKeys)
-
-            let onConflictQuery: String
-            if keys.isEmpty {
-                onConflictQuery = "ON CONFLICT(\(conflictedKeysString)) DO NOTHING"
-            } else {
-                var updates: [String] = []
-                for key in keys {
-                    updates.append("\(key)=excluded.\(key)")
-                }
-
-                let updateString = updates.joined(separator: ",")
-                onConflictQuery = "ON CONFLICT(\(conflictedKeysString)) DO UPDATE SET \(updateString)"
-            }
-
-            query += " \(onConflictQuery)"
-        }
-
-        query += ";"
-
-        let statement = try db.prepare(query)
-        for (index, value) in container.columns.values.enumerated() {
-            try statement.bind(value, at: Int32(index + 1))
-        }
-        try statement.step()
-
-        for (_ , values) in container.enclosed {
-            try values.first?.setup(in: db)
-            for element in values {
-                try element.save(in: db)
-            }
-        }
-    }
-
-}
-
-// MARK: Optional
-
-extension Optional: AnyOmirable where Wrapped: Omirable {
-
-    public static var omirosName: String {
-        return Wrapped.omirosName
-    }
-
-    public init(in db: SQLite, options: AnyOmirosQueryOptions) throws {
-        self = try Wrapped.init(in: db, options: options)
-    }
-
-    public static func isSetup(in db: SQLite) throws -> Bool {
-        return try Wrapped.isSetup(in: db)
-    }
-
-    public func setup(in db: SQLite) throws {
-        try self?.setup(in: db)
-    }
-
-    public func save(in db: SQLite) throws {
-        switch self {
-        case .some(let value):
-            try value.save(in: db)
-        case .none:
-            break
-        }
-    }
-
-}
-
-// MARK: Array
-
-extension Array: AnyOmirable where Element: Omirable {
-
-    public static var omirosName: String {
-        return Element.omirosName
-    }
-
-    public init?(in db: SQLite, options: AnyOmirosQueryOptions) throws {
-        guard try Element.isSetup(in: db) else {
-            return nil
-        }
-
-        var query = "SELECT COUNT(*) FROM \(Element.omirosName)\(options.sqlWhereClause());"
-        var statement = try db.prepare(query).step()
-        let count: Int = statement.column(at: 0)
-
-        self.init()
-        reserveCapacity(count)
-
-        query = "SELECT * FROM \(Element.omirosName)\(options.sqlWhereClause());"
-        statement = try db.prepare(query).step()
-
-        while statement.hasMoreRows {
-            let container = OmirosOutput<Element>(statement)
-            let entity = try Element(container: container)
-            append(entity)
-
-            try statement.step()
-        }
-    }
-
-    public static func isSetup(in db: SQLite) throws -> Bool {
-        return try Element.isSetup(in: db)
-    }
-
-    public func setup(in db: SQLite) throws {
-        try first?.setup(in: db)
-    }
-
-    public func save(in db: SQLite) throws {
-        for element in self {
-            try element.save(in: db)
         }
     }
 

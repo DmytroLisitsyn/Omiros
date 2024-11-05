@@ -31,8 +31,8 @@ class OmirosTests: XCTestCase {
     var omiros: Omiros!
 
     override func setUp() {
-//        let logger = os.Logger(subsystem: "Omiros", category: "OmirosTests")
-        omiros = Omiros(named: "OmirosTests", logger: nil)
+//        omiros = Omiros(named: "OmirosTests", logger: nil)
+        omiros = .inMemory()
     }
 
     override func tearDown() async throws {
@@ -238,7 +238,9 @@ class OmirosTests: XCTestCase {
         var ivory = Dog(ownerID: owner.id, name: "Ivory")
         ivory.collarCaption = "Evory"
 
-        owner.dogs = [ebony, ivory]
+        let pinky = Dog(ownerID: owner.id, name: "Pinky")
+
+        owner.dogs = [ebony, ivory, pinky]
 
         try await omiros.save(owner)
 

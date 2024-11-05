@@ -34,66 +34,50 @@ public actor Omiros {
         self.connection = connection
     }
 
-    public init(named name: String, logger: os.Logger? = nil) {
+    public init(named name: String, logger: Logger? = nil) {
         let connection = SQLiteConnectionToFile(named: name)
         connection.logger = logger
         self.init(connection: connection)
     }
 
-    public static func inMemory(logger: os.Logger? = nil) -> Omiros {
+    public static func inMemory(logger: Logger? = nil) -> Omiros {
         let connection = SQLiteConnectionToMemory()
         connection.logger = logger
         return Omiros(connection: connection)
     }
 
-    public func save<T: Omirable>(_ entity: T) throws {
-        try save([entity])
-    }
-    
-    public func save<T: Omirable>(_ entities: [T]) throws {
-        let db = try connection.setup()
-        try db.execute("BEGIN TRANSACTION;")
-
-        try entities.first?.setup(in: db)
-        try entities.save(in: db)
-
-        try db.execute("END TRANSACTION;")
-    }
-
-    nonisolated
-    public func fetchFirst<T: Omirable>(_ type: T.Type = T.self, with options: OmirosQueryOptions<T> = .init()) async throws -> T? {
+    public func fetchFirst<T: Omirable>(_ type: T.Type = T.self, with options: OmirosQueryOptions<T> = .init()) throws -> T? {
         let db = try connection.setup()
         let entity = try T.init(in: db, options: options)
         return entity
     }
 
-    nonisolated
-    public func fetch<T: Omirable>(_ type: T.Type = T.self, with options: OmirosQueryOptions<T> = .init()) async throws -> [T] {
+    public func fetch<T: Omirable>(_ type: T.Type = T.self, with options: OmirosQueryOptions<T> = .init()) throws -> [T] {
         let db = try connection.setup()
         let entities = try [T].init(in: db, options: options) ?? []
         return entities
     }
 
-    nonisolated
-    public func count<T: Omirable>(_ type: T.Type = T.self, with options: OmirosQueryOptions<T> = .init()) async throws -> Int {
+    public func count<T: Omirable>(_ type: T.Type = T.self, with options: OmirosQueryOptions<T> = .init()) throws -> Int {
         let db = try connection.setup()
-
-        guard try T.isSetup(in: db) else {
-            return 0
-        }
-
-        let query = "SELECT COUNT(*) FROM \(T.omirosName)\(options.sqlWhereClause());"
-        let statement = try db.prepare(query).step()
-        let count: Int = statement.column(at: 0)
+        let count = try T.count(in: db, options: options)
         return count
+    }
+
+    public func save<T: Omirable>(_ entity: T) throws {
+        try save([entity])
+    }
+
+    public func save<T: Omirable>(_ entities: [T]) throws {
+        let db = try connection.setup()
+        try db.execute("BEGIN TRANSACTION;")
+        try entities.save(in: db)
+        try db.execute("END TRANSACTION;")
     }
 
     public func delete<T: Omirable>(_ type: T.Type = T.self, with options: OmirosQueryOptions<T> = .init()) throws {
         let db = try connection.setup()
-
-        guard try T.isSetup(in: db) else { return }
-
-        try db.execute("DELETE FROM \(T.omirosName)\(options.sqlWhereClause());")
+        try T.delete(in: db, options: options)
     }
 
     public func deleteAll() throws {
@@ -112,13 +96,13 @@ public actor Omiros {
 // MARK: - SQLiteConnection
 
 private protocol SQLiteConnection: AnyObject {
-    var logger: os.Logger? { get set }
+    var logger: Logger? { get set }
     func setup() throws -> SQLite
 }
 
 private final class SQLiteConnectionToFile: SQLiteConnection {
 
-    var logger: os.Logger?
+    var logger: Logger?
 
     let name: String
 
@@ -135,7 +119,7 @@ private final class SQLiteConnectionToFile: SQLiteConnection {
 
 private final class SQLiteConnectionToMemory: SQLiteConnection {
 
-    var logger: os.Logger? {
+    var logger: Logger? {
         didSet { db?.logger = logger }
     }
 

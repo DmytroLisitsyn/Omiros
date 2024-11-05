@@ -47,13 +47,13 @@ public struct OmirosInput<T: Omirable> {
     var indices: [(name: String, keys: [String])] = []
     var columns: [String: SQLiteType] = [:]
     var relations: [String: AnyOmirosRelation] = [:]
-    var enclosed: [String: [AnyOmirable]] = [:]
+    var enclosed: [String: [(AnyOmirable, AnyOmirosQueryOptions?)]] = [:]
 
     public mutating func setPrimaryKey(_ key: T.OmirosKey) {
         primaryKeys.insert(key.stringValue)
     }
 
-    public mutating func setIndex(_ keys: T.OmirosKey...) {
+    public mutating func setIndex(_ keys: [T.OmirosKey]) {
         let keyStrings = keys.map(\.stringValue)
         let name = "omiros_\(keyStrings.joined(separator: "_"))"
         indices.append((name, keyStrings))
@@ -68,8 +68,12 @@ public struct OmirosInput<T: Omirable> {
         relations[key.stringValue] = relation
     }
 
-    public mutating func set<U: AnyOmirable>(_ entity: U) {
-        enclosed[U.omirosName, default: []].append(entity)
+    public mutating func set<U: Omirable>(_ entity: U, with options: OmirosQueryOptions<U>? = nil) {
+        enclosed[U.omirosName, default: []].append((entity, options))
+    }
+
+    public mutating func set<U: Omirable>(_ entities: [U], with options: OmirosQueryOptions<U>? = nil) {
+        enclosed[U.omirosName, default: []].append((entities, options))
     }
 
 }
