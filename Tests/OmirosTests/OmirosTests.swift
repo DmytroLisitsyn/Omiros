@@ -23,16 +23,15 @@
 //
 
 import XCTest
-@testable import Omiros
 import os
+@testable import Omiros
 
 class OmirosTests: XCTestCase {
 
     var omiros: Omiros!
 
     override func setUp() {
-//        omiros = Omiros(named: "OmirosTests", logger: nil)
-        omiros = .inMemory()
+        omiros = Omiros("OmirosTests", inMemory: true)
     }
 
     override func tearDown() async throws {
@@ -56,28 +55,27 @@ class OmirosTests: XCTestCase {
 
     func testFiltering() async throws {
         var entities: [Person] = []
-        for _ in 0..<10000 {
-            entities.append(.init())
+        for index in 0..<10000 {
+            entities.append(.init(firstName: "\(index)", lastName: "\(index)"))
         }
         for _ in 0..<100 {
             entities.append(Person(firstName: "Jack", lastName: "White"))
             entities.append(Person(firstName: "Jack", lastName: "Black"))
             entities.append(Person(firstName: "Jack", lastName: "Gray"))
-            entities.append(Person(firstName: "Peter", lastName: "Parker"))
+            entities.append(Person(firstName: "Lucy", lastName: "White"))
         }
-        entities.append(Person(firstName: "Brandon", lastName: "Smith"))
-
+        entities.append(Person(firstName: "Andrea", lastName: "Smith"))
         entities.shuffle()
 
         try await omiros.save(entities)
 
-        let options = OmirosQueryOptions<Person>([
+        let options = OmirosQueryOptions<Person>(.all([
             .equal(.firstName, "Jack"),
             .any([
                 .equal(.lastName, "White"),
                 .equal(.lastName, "Black")
             ])
-        ])
+        ]))
 
         let fetched = try? await omiros.fetch(Person.self, with: options)
         XCTAssertEqual(fetched?.count, 200)
@@ -159,10 +157,10 @@ class OmirosTests: XCTestCase {
 
         try await omiros.save(entities)
 
-        var options = OmirosQueryOptions<Person>(
+        var options = OmirosQueryOptions<Person>(.all([
             .not(.equal(.firstName, "Jack")),
             .not(.equal(.firstName, "Rihanna"))
-        )
+        ]))
         var fetched = try? await omiros.fetch(Person.self, with: options)
 
         XCTAssertEqual(fetched?.count, 11)
@@ -261,25 +259,27 @@ class OmirosTests: XCTestCase {
     }
 
     func testParallelOperations() async throws {
-        let saveBunchOfPeople: @Sendable () async throws -> Void = {
-            var entities: [Person] = []
-            for _ in 0..<100 {
-                entities.append(.init())
-            }
-
-            try await self.omiros.save(entities)
-        }
-
         try await withThrowingTaskGroup(of: Void.self) { group in
-            group.addTask(operation: saveBunchOfPeople)
-            group.addTask(operation: saveBunchOfPeople)
-            group.addTask(operation: saveBunchOfPeople)
+            for _ in 0..<20 {
+                group.addTask {
+                    var entities: [Person] = []
+                    for _ in 0..<100 {
+                        entities.append(.init())
+                    }
+
+                    try await self.omiros.save(entities)
+                }
+
+                group.addTask {
+                    let _ = try await self.omiros.fetch(Person.self)
+                }
+            }
 
             try await group.waitForAll()
         }
 
         let fetched = try await omiros.fetch(Person.self)
-        XCTAssertEqual(fetched.count, 300)
+        XCTAssertEqual(fetched.count, 2000)
     }
 
     func testDeleteAll() async throws {

@@ -24,7 +24,15 @@
 
 import Foundation
 
-public enum OmirosError: Error {
-    case unavailableSQLiteStatement
-    case missingColumnIndex
+public enum OmirosError: LocalizedError {
+
+    case noColumnForKey(String)
+
+    public var errorDescription: String? {
+        switch self {
+        case .noColumnForKey(let key):
+            return "No column `\(key)`."
+        }
+    }
+
 }

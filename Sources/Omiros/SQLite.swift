@@ -28,63 +28,43 @@ import os
 
 public final class SQLite {
 
-    public enum Location {
-        case file(name: String)
-        case memory
-    }
+    private let path: String
+    private let logger: os.Logger?
 
-    let config: String
-    let pointer: OpaquePointer
+    private let pointer: OpaquePointer
 
-    public var logger: os.Logger?
-
-    public init(in location: Location, logger: os.Logger? = nil) throws {
+    public init(path: String, inMemory: Bool = false, logger: os.Logger? = nil) throws {
+        self.path = path
         self.logger = logger
 
-        switch location {
-        case .file(let name):
-            config = try SQLite.makeFilePath(name: name)
-        case .memory:
-            config = ":memory:"
+        var flags = SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE
+
+        if inMemory {
+            flags = flags | SQLITE_OPEN_MEMORY | SQLITE_OPEN_SHAREDCACHE
         }
 
         var pointer: OpaquePointer!
-        let result = sqlite3_open(config, &pointer)
+        let result = sqlite3_open_v2("file:\(path)", &pointer, flags, nil)
         self.pointer = pointer
         try processResult(result)
 
-        logger?.log("SQLite connection opened: \(self.config)")
+        logger?.log("SQLite opened: \(self.path)")
 
         try execute("PRAGMA foreign_keys=ON;")
     }
 
     deinit {
-        sqlite3_close(pointer)
-        logger?.log("SQLite connection closed: \(self.config)")
+        sqlite3_close_v2(pointer)
+        logger?.log("SQLite closed: \(self.path)")
     }
 
     public func prepare(_ query: String) throws -> Statement {
         logger?.log("\(query)")
-        return try Statement(query, database: self)
+        return try Statement(query, db: self)
     }
 
     public func execute(_ query: String) throws {
         try prepare(query).step()
-    }
-
-    public static func deleteFile(named name: String) throws {
-        let filePath = try makeFilePath(name: name)
-
-        let fileManager = FileManager.default
-        if fileManager.fileExists(atPath: filePath) {
-            try fileManager.removeItem(atPath: filePath)
-        }
-    }
-
-    private static func makeFilePath(name: String) throws -> String {
-        let fileManager = FileManager.default
-        let fileURL = try fileManager.url(for: .documentDirectory, in: .userDomainMask, appropriateFor: nil, create: false).appendingPathComponent("\(name).sqlite")
-        return fileURL.path
     }
 
     private func processResult(_ result: Int32) throws {
@@ -92,7 +72,7 @@ public final class SQLite {
         case SQLITE_ROW, SQLITE_DONE, SQLITE_OK:
             break
         default:
-            let errorCode = Int(sqlite3_errcode(pointer))
+            let errorCode = sqlite3_errcode(pointer)
             let message = String(cString: sqlite3_errmsg(pointer))
             throw SQLiteError(code: errorCode, message: message)
         }
@@ -106,21 +86,17 @@ extension SQLite {
 
         public var hasMoreRows = false
 
-        public var columnCount: Int32 {
-            return sqlite3_data_count(pointer)
-        }
-
+        let db: SQLite
         let pointer: OpaquePointer
-        let database: SQLite
 
-        init(_ query: String, database: SQLite) throws {
+        init(_ query: String, db: SQLite) throws {
             var pointer: OpaquePointer?
-            let result = sqlite3_prepare_v2(database.pointer, NSString(string: query).utf8String, -1, &pointer, nil)
+            let result = sqlite3_prepare_v2(db.pointer, NSString(string: query).utf8String, -1, &pointer, nil)
 
-            try database.processResult(result)
+            try db.processResult(result)
 
             self.pointer = pointer!
-            self.database = database
+            self.db = db
         }
 
         deinit {
@@ -131,23 +107,27 @@ extension SQLite {
         public func step() throws -> Statement {
             let result = sqlite3_step(pointer)
             hasMoreRows = (result == SQLITE_ROW)
-            try database.processResult(result)
+            try db.processResult(result)
             return self
         }
 
         @discardableResult
         public func bind(_ value: SQLiteType, at index: Int32) throws -> Statement {
-            let result = value.bind(at: index, statement: self)
-            try database.processResult(result)
+            let result = value.sqLiteBind(at: index, statement: self)
+            try db.processResult(result)
             return self
         }
 
-        public func column<T: SQLiteType>(at index: Int32, type: T.Type = T.self) -> T {
-            return T.column(at: index, statement: self)
+        public func value<T: SQLiteType>(at index: Int32, type: T.Type = T.self) -> T {
+            return T.sqLiteValue(at: index, statement: self)
         }
 
         public func columnName(at index: Int32) -> String {
             return sqlite3_column_name(pointer, index).flatMap({ String(cString: $0) })!
+        }
+
+        public func columnCount() -> Int32 {
+            return sqlite3_data_count(pointer)
         }
 
     }

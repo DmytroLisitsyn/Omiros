@@ -26,35 +26,35 @@ import Foundation
 import SQLite3
 
 public protocol SQLiteType {
-    static var sqLiteName: String { get }
-    var sqLiteValue: String { get }
+    @inlinable static var sqLiteType: String { get }
+    var sqLiteQueryValue: String { get }
 
-    func bind(at index: Int32, statement: SQLite.Statement) -> Int32
-    static func column(at index: Int32, statement: SQLite.Statement) -> Self
+    func sqLiteBind(at index: Int32, statement: SQLite.Statement) -> Int32
+    static func sqLiteValue(at index: Int32, statement: SQLite.Statement) -> Self
 }
 
 extension Optional: SQLiteType where Wrapped: SQLiteType {
 
-    public static var sqLiteName: String {
+    public static var sqLiteType: String {
         return "NULL"
     }
 
-    public var sqLiteValue: String {
+    public var sqLiteQueryValue: String {
         return "NULL"
     }
 
-    public func bind(at index: Int32, statement: SQLite.Statement) -> Int32 {
+    public func sqLiteBind(at index: Int32, statement: SQLite.Statement) -> Int32 {
         switch self {
         case .some(let value):
-            return value.bind(at: index, statement: statement)
+            return value.sqLiteBind(at: index, statement: statement)
         case .none:
             return sqlite3_bind_null(statement.pointer, index)
         }
     }
 
-    public static func column(at index: Int32, statement: SQLite.Statement) -> Wrapped? {
+    public static func sqLiteValue(at index: Int32, statement: SQLite.Statement) -> Wrapped? {
         if sqlite3_column_type(statement.pointer, index) != SQLITE_NULL {
-            return Wrapped.column(at: index, statement: statement)
+            return Wrapped.sqLiteValue(at: index, statement: statement)
         } else {
             return nil
         }
@@ -64,47 +64,39 @@ extension Optional: SQLiteType where Wrapped: SQLiteType {
 
 extension Bool: SQLiteType {
 
-    public static var sqLiteName: String {
+    public static var sqLiteType: String {
         return "INTEGER"
     }
 
-    public var sqLiteValue: String {
-        return "\(int32)"
+    public var sqLiteQueryValue: String {
+        return "\(self ? 1 : 0)"
     }
 
-    public func bind(at index: Int32, statement: SQLite.Statement) -> Int32 {
-        return sqlite3_bind_int(statement.pointer, index, int32)
+    public func sqLiteBind(at index: Int32, statement: SQLite.Statement) -> Int32 {
+        return sqlite3_bind_int(statement.pointer, index, self ? 1 : 0)
     }
 
-    public static func column(at index: Int32, statement: SQLite.Statement) -> Bool {
-        return Bool(sqlite3_column_int(statement.pointer, index))
-    }
-
-    private init(_ value: Int32) {
-        self = value != 0
-    }
-
-    private var int32: Int32 {
-        return self ? 1 : 0
+    public static func sqLiteValue(at index: Int32, statement: SQLite.Statement) -> Bool {
+        return sqlite3_column_int(statement.pointer, index) != 0
     }
 
 }
 
 extension Int: SQLiteType {
 
-    public static var sqLiteName: String {
+    public static var sqLiteType: String {
         return "INTEGER"
     }
 
-    public var sqLiteValue: String {
+    public var sqLiteQueryValue: String {
         return "\(self)"
     }
 
-    public func bind(at index: Int32, statement: SQLite.Statement) -> Int32 {
+    public func sqLiteBind(at index: Int32, statement: SQLite.Statement) -> Int32 {
         return sqlite3_bind_int64(statement.pointer, index, Int64(self))
     }
 
-    public static func column(at index: Int32, statement: SQLite.Statement) -> Int {
+    public static func sqLiteValue(at index: Int32, statement: SQLite.Statement) -> Int {
         return Int(sqlite3_column_int64(statement.pointer, index))
     }
 
@@ -112,19 +104,19 @@ extension Int: SQLiteType {
 
 extension Double: SQLiteType {
 
-    public static var sqLiteName: String {
+    public static var sqLiteType: String {
         return "REAL"
     }
 
-    public var sqLiteValue: String {
+    public var sqLiteQueryValue: String {
         return "\(self)"
     }
 
-    public func bind(at index: Int32, statement: SQLite.Statement) -> Int32 {
+    public func sqLiteBind(at index: Int32, statement: SQLite.Statement) -> Int32 {
         return sqlite3_bind_double(statement.pointer, index, self)
     }
 
-    public static func column(at index: Int32, statement: SQLite.Statement) -> Double {
+    public static func sqLiteValue(at index: Int32, statement: SQLite.Statement) -> Double {
         return sqlite3_column_double(statement.pointer, index)
     }
 
@@ -132,87 +124,83 @@ extension Double: SQLiteType {
 
 extension String: SQLiteType {
 
-    public static var sqLiteName: String {
+    public static var sqLiteType: String {
         return "TEXT"
     }
 
-    public var sqLiteValue: String {
+    public var sqLiteQueryValue: String {
         return "'\(self)'"
     }
 
-    public func bind(at index: Int32, statement: SQLite.Statement) -> Int32 {
+    public func sqLiteBind(at index: Int32, statement: SQLite.Statement) -> Int32 {
         return sqlite3_bind_text(statement.pointer, index, NSString(string: self).utf8String, -1, nil)
     }
 
-    public static func column(at index: Int32, statement: SQLite.Statement) -> String {
+    public static func sqLiteValue(at index: Int32, statement: SQLite.Statement) -> String {
         return sqlite3_column_text(statement.pointer, index).flatMap(String.init(cString:)) ?? ""
-    }
-
-}
-
-extension Date: SQLiteType {
-
-    public static var sqLiteName: String {
-        return "REAL"
-    }
-
-    public var sqLiteValue: String {
-        return "\(timeIntervalSince1970)"
-    }
-
-    public func bind(at index: Int32, statement: SQLite.Statement) -> Int32 {
-        return sqlite3_bind_double(statement.pointer, index, timeIntervalSince1970)
-    }
-
-    public static func column(at index: Int32, statement: SQLite.Statement) -> Date {
-        let timeIntervalSince1970 = sqlite3_column_double(statement.pointer, index)
-        return Date(timeIntervalSince1970: timeIntervalSince1970)
     }
 
 }
 
 extension Data: SQLiteType {
 
-    public static var sqLiteName: String {
+    public static var sqLiteType: String {
         return "BLOB"
     }
 
-    public var sqLiteValue: String {
-        debugPrint("Data values comparison is not supported by Omiros. Attempt will result in excluding results from query.")
-        return ""
+    public var sqLiteQueryValue: String {
+        fatalError("Not supported BLOB query.")
     }
 
-    public func bind(at index: Int32, statement: SQLite.Statement) -> Int32 {
+    public func sqLiteBind(at index: Int32, statement: SQLite.Statement) -> Int32 {
         let data = self as NSData
         return sqlite3_bind_blob(statement.pointer, index, data.bytes, Int32(data.length), nil)
     }
 
-    public static func column(at index: Int32, statement: SQLite.Statement) -> Data {
+    public static func sqLiteValue(at index: Int32, statement: SQLite.Statement) -> Data {
         let bytes = sqlite3_column_blob(statement.pointer, index)
         let length = sqlite3_column_bytes(statement.pointer, index)
-        let data = NSData(bytes: bytes, length: Int(length))
-        return data as Data
+        return NSData(bytes: bytes, length: Int(length)) as Data
+    }
+
+}
+
+extension Date: SQLiteType {
+
+    public static var sqLiteType: String {
+        return TimeInterval.sqLiteType
+    }
+
+    public var sqLiteQueryValue: String {
+        return timeIntervalSince1970.sqLiteQueryValue
+    }
+
+    public func sqLiteBind(at index: Int32, statement: SQLite.Statement) -> Int32 {
+        return sqlite3_bind_double(statement.pointer, index, timeIntervalSince1970)
+    }
+
+    public static func sqLiteValue(at index: Int32, statement: SQLite.Statement) -> Date {
+        return Date(timeIntervalSince1970: sqlite3_column_double(statement.pointer, index))
     }
 
 }
 
 extension URL: SQLiteType {
 
-    public static var sqLiteName: String {
-        return String.sqLiteName
+    public static var sqLiteType: String {
+        return String.sqLiteType
     }
 
-    public var sqLiteValue: String {
-        return absoluteString.sqLiteValue
+    public var sqLiteQueryValue: String {
+        return absoluteString.sqLiteQueryValue
     }
 
-    public func bind(at index: Int32, statement: SQLite.Statement) -> Int32 {
-        return absoluteString.bind(at: index, statement: statement)
+    public func sqLiteBind(at index: Int32, statement: SQLite.Statement) -> Int32 {
+        return absoluteString.sqLiteBind(at: index, statement: statement)
     }
 
-    public static func column(at index: Int32, statement: SQLite.Statement) -> URL {
-        let string = String.column(at: index, statement: statement)
-        return URL(string: string)!
+    public static func sqLiteValue(at index: Int32, statement: SQLite.Statement) -> URL {
+        return URL(string: .sqLiteValue(at: index, statement: statement))!
     }
 
 }

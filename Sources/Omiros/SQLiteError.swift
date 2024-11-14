@@ -26,10 +26,10 @@ import Foundation
 
 public struct SQLiteError: Error, Equatable {
 
-    public let code: Int
+    public let code: Int32
     public let message: String
 
-    public init(code: Int, message: String) {
+    public init(code: Int32, message: String) {
         self.code = code
         self.message = message
     }

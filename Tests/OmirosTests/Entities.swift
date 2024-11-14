@@ -29,7 +29,7 @@ import Omiros
 
 struct Person: Omirable {
 
-    enum OmirosKey: AnyOmirosKey {
+    enum OmirableKey: CodingKey {
         case id
         case firstName
         case lastName
@@ -55,7 +55,7 @@ struct Person: Omirable {
         self.dateOfBirth = dateOfBirth
     }
 
-    init(container: OmirosOutput<Person>) throws {
+    init(container: OmirosFetching<Person>) throws {
         self.init()
 
         id = try container.get(for: .id)
@@ -67,7 +67,7 @@ struct Person: Omirable {
         homePageURL = try container.get(for: .homePageURL)
     }
 
-    func fill(container: inout OmirosInput<Person>) {
+    func fill(container: inout OmirosSaving<Person>) {
         container.setIndex([.lastName, .firstName])
 
         container.set(id, for: .id)
@@ -85,7 +85,7 @@ struct Person: Omirable {
 
 struct Owner: Omirable {
 
-    enum OmirosKey: AnyOmirosKey {
+    enum OmirableKey: CodingKey {
         case id
         case name
         case dogs
@@ -99,14 +99,14 @@ struct Owner: Omirable {
         self.id = id
     }
 
-    init(container: OmirosOutput<Owner>) throws {
+    init(container: OmirosFetching<Owner>) throws {
         self.init(id: try container.get(for: .id))
 
         name = try container.get(for: .name)
         dogs = try container.get(with: .init(.equal(.ownerID, id)))
     }
 
-    func fill(container: inout OmirosInput<Owner>) {
+    func fill(container: inout OmirosSaving<Owner>) {
         container.setPrimaryKey(.id)
 
         container.set(id, for: .id)
@@ -120,7 +120,7 @@ struct Owner: Omirable {
 
 struct Dog: Omirable, Equatable {
 
-    enum OmirosKey: AnyOmirosKey {
+    enum OmirableKey: CodingKey {
         case id
         case ownerID
         case name
@@ -140,19 +140,19 @@ struct Dog: Omirable, Equatable {
         self.name = name
     }
 
-    init(container: OmirosOutput<Dog>) throws {
+    init(container: OmirosFetching<Dog>) throws {
         self.init(ownerID: try container.get(for: .ownerID), name: try container.get(for: .name))
 
         collarCaption = try container.get(for: .collarCaption)
     }
 
-    func fill(container: inout OmirosInput<Dog>) {
+    func fill(container: inout OmirosSaving<Dog>) {
         container.setPrimaryKey(.id)
 
         container.set(id, for: .id)
         container.set(name, for: .name)
         container.set(collarCaption, for: .collarCaption)
-        container.set(ownerID, for: .ownerID, as: OmirosRelation<Owner>(.id))
+        container.set(ownerID, for: .ownerID, relatedTo: Owner.self, key: .id)
     }
 
 }

@@ -22,16 +22,35 @@
 //  SOFTWARE.
 //
 
-import UIKit
+import Foundation
 
-@UIApplicationMain
-class AppDelegate: UIResponder, UIApplicationDelegate {
+public struct OmirosFetching<T: Omirable> {
 
-    var window: UIWindow?
+    private weak var statement: SQLite.Statement?
+    private var columnIndexByName: [String: Int32] = [:]
 
-    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        // Override point for customization after application launch.
-        return true
+    init(_ statement: SQLite.Statement) {
+        self.statement = statement
+
+        for columnIndex in 0..<statement.columnCount() {
+            columnIndexByName[statement.columnName(at: columnIndex)] = Int32(columnIndex)
+        }
+    }
+
+    public func get<U: SQLiteType>(_ valueType: U.Type = U.self, for key: T.OmirableKey) throws -> U {
+        guard let columnIndex = columnIndexByName[key.stringValue] else {
+            throw OmirosError.noColumnForKey(key.stringValue)
+        }
+
+        return statement!.value(at: columnIndex, type: valueType)
+    }
+
+    public func get<U: Omirable>(_ entityType: U.Type = U.self, with options: OmirosQueryOptions<U>) throws -> U? {
+        return try entityType.init(in: statement!.db, with: options)
+    }
+
+    public func get<U: Omirable>(_ entityType: [U].Type = [U].self, with options: OmirosQueryOptions<U>) throws -> [U] {
+        return try entityType.init(in: statement!.db, with: options)
     }
 
 }
