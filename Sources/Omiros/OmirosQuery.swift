@@ -24,7 +24,7 @@
 
 import Foundation
 
-public struct OmirosQueryOptions<T: Omirable> {
+public struct OmirosQuery<T: Omirable> {
 
     public indirect enum Condition {
         case equal(_ key: T.OmirableKey, _ value: SQLiteType?)
@@ -39,63 +39,58 @@ public struct OmirosQueryOptions<T: Omirable> {
     }
 
     public enum Order {
-        case ascending([T.OmirableKey])
-        case descending([T.OmirableKey])
+        case asc(T.OmirableKey)
+        case desc(T.OmirableKey)
     }
 
     public var condition: Condition?
-    public var order: Order
+    public var order: [Order]
     public var offset: Int
     public var limit: Int
 
-    public init(_ condition: Condition? = nil, order: Order = .ascending([]), offset: Int = 0, limit: Int = 0) {
+    public init(where condition: Condition? = nil, order: [Order] = [], offset: Int = 0, limit: Int = 0) {
         self.condition = condition
         self.order = order
         self.offset = offset
         self.limit = limit
     }
 
-    public func sqlWhereClause() -> String {
-        var subquery = ""
+    public func sqlSubquery() -> String {
+        var components: [String] = []
 
-        if let condition = condition {
-            let clause = sqlWhereClause(for: condition)
-            subquery += " WHERE \(clause)"
+        if let condition = condition, let conditionsString = sqlWhereConditions(from: condition) {
+            components.append("WHERE \(conditionsString)")
         }
 
-        var orderConstraints: [T.OmirableKey]
-        var orderDirection: String
+        if !order.isEmpty {
+            let orderStrings = order.map({ order in
+                switch order {
+                case .asc(let omirableKey):
+                    return "\(omirableKey.stringValue) ASC"
+                case .desc(let omirableKey):
+                    return "\(omirableKey.stringValue) DESC"
+                }
+            })
 
-        switch order {
-        case .ascending(let constraints):
-            orderConstraints = constraints
-            orderDirection = "ASC"
-        case .descending(let constraints):
-            orderConstraints = constraints
-            orderDirection = "DESC"
-        }
-
-        if orderConstraints.count > 0 {
-            let clause = orderConstraints.map({ $0.stringValue }).joined(separator: ",")
-            subquery += " ORDER BY \(clause) \(orderDirection)"
+            components.append("ORDER BY \(orderStrings.joined(separator: ", "))")
         }
 
         if limit > 0 {
-            subquery += " LIMIT \(limit)"
+            components.append("LIMIT \(limit)")
         }
 
         if offset > 0 {
             if !(limit > 0) {
-                subquery += " LIMIT -1"
+                components.append("LIMIT -1")
             }
 
-            subquery += " OFFSET \(offset)"
+            components.append("OFFSET \(offset)")
         }
 
-        return subquery
+        return components.joined(separator: " ")
     }
 
-    private func sqlWhereClause(for condition: OmirosQueryOptions.Condition) -> String {
+    private func sqlWhereConditions(from condition: OmirosQuery.Condition?) -> String? {
         switch condition {
         case .equal(let key, let value):
             if let value = value {
@@ -114,17 +109,27 @@ public struct OmirosQueryOptions<T: Omirable> {
         case .like(let key, let value):
             return "\(key.stringValue) LIKE \(value.sqLiteQueryValue)"
         case .all(let conditions):
-            let clause = conditions.map(sqlWhereClause).joined(separator: " AND ")
-            return "(\(clause))"
+            let conditionStrings = conditions.compactMap(sqlWhereConditions)
+            if conditionStrings.isEmpty {
+                return nil
+            } else {
+                return "(\(conditionStrings.joined(separator: " AND ")))"
+            }
         case .any(let conditions):
-            let clause = conditions.map(sqlWhereClause).joined(separator: " OR ")
-            return "(\(clause))"
+            let conditionStrings = conditions.compactMap(sqlWhereConditions)
+            if conditionStrings.isEmpty {
+                return nil
+            } else {
+                return "(\(conditionStrings.joined(separator: " OR ")))"
+            }
         case .not(let condition):
-            return reversedSQLWhereClause(for: condition)
+            return reversedSQLWhereConditions(from: condition)
+        case .none:
+            return nil
         }
     }
 
-    private func reversedSQLWhereClause(for condition: OmirosQueryOptions.Condition) -> String {
+    private func reversedSQLWhereConditions(from condition: OmirosQuery.Condition?) -> String? {
         switch condition {
         case .equal(let key, let value):
             if let value = value {
@@ -133,21 +138,23 @@ public struct OmirosQueryOptions<T: Omirable> {
                 return "\(key.stringValue) IS NOT NULL"
             }
         case .greaterThan(let key, let value):
-            return sqlWhereClause(for: .lessThanOrEqual(key, value))
+            return sqlWhereConditions(from: .lessThanOrEqual(key, value))
         case .lessThan(let key, let value):
-            return sqlWhereClause(for: .greaterThanOrEqual(key, value))
+            return sqlWhereConditions(from: .greaterThanOrEqual(key, value))
         case .greaterThanOrEqual(let key, let value):
-            return sqlWhereClause(for: .lessThan(key, value))
+            return sqlWhereConditions(from: .lessThan(key, value))
         case .lessThanOrEqual(let key, let value):
-            return sqlWhereClause(for: .greaterThan(key, value))
+            return sqlWhereConditions(from: .greaterThan(key, value))
         case .like(let key, let value):
             return "\(key.stringValue) NOT LIKE \(value.sqLiteQueryValue)"
         case .all(let conditions):
-            return sqlWhereClause(for: .any(conditions.map(Condition.not)))
+            return sqlWhereConditions(from: .any(conditions.map(Condition.not)))
         case .any(let conditions):
-            return sqlWhereClause(for: .all(conditions.map(Condition.not)))
+            return sqlWhereConditions(from: .all(conditions.map(Condition.not)))
         case .not(let condition):
-            return reversedSQLWhereClause(for: condition)
+            return reversedSQLWhereConditions(from: condition)
+        case .none:
+            return nil
         }
     }
 

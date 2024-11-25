@@ -38,35 +38,47 @@ public actor Omiros {
         }
     }
 
-    public func count<T: Omirable>(_ type: T.Type = T.self, with options: OmirosQueryOptions<T> = .init()) throws -> Int {
+    public func transaction<T>(_ transaction: (_ db: SQLite) throws -> T) throws -> T {
         let db = try connection.setup()
-        return try T.count(in: db, with: options)
+        try db.execute("BEGIN TRANSACTION;")
+
+        let result: Result<T, Error>
+        do {
+            result = .success(try transaction(db))
+        } catch {
+            result = .failure(error)
+        }
+
+        try db.execute("END TRANSACTION;")
+        return try result.get()
     }
 
-    public func fetchFirst<T: Omirable>(_ type: T.Type = T.self, with options: OmirosQueryOptions<T> = .init()) throws -> T? {
+    public func count<T: Omirable>(_ type: T.Type = T.self, with query: OmirosQuery<T> = .init()) throws -> Int {
         let db = try connection.setup()
-        return try T.init(in: db, with: options)
+        return try T.count(in: db, with: query)
     }
 
-    public func fetch<T: Omirable>(_ type: T.Type = T.self, with options: OmirosQueryOptions<T> = .init()) throws -> [T] {
+    public func fetchFirst<T: Omirable>(_ type: T.Type = T.self, with query: OmirosQuery<T> = .init()) throws -> T? {
         let db = try connection.setup()
-        return try [T].init(in: db, with: options)
+        return try T.init(in: db, with: query)
+    }
+
+    public func fetch<T: Omirable>(_ type: T.Type = T.self, with query: OmirosQuery<T> = .init()) throws -> [T] {
+        let db = try connection.setup()
+        return try [T].init(in: db, with: query)
     }
 
     public func save<T: Omirable>(_ entity: T) throws {
-        try save([entity])
+        try transaction(entity.save)
     }
 
     public func save<T: Omirable>(_ entities: [T]) throws {
-        let db = try connection.setup()
-        try db.execute("BEGIN TRANSACTION;")
-        try entities.save(in: db)
-        try db.execute("END TRANSACTION;")
+        try transaction(entities.save)
     }
 
-    public func delete<T: Omirable>(_ type: T.Type = T.self, with options: OmirosQueryOptions<T> = .init()) throws {
+    public func delete<T: Omirable>(_ type: T.Type = T.self, with query: OmirosQuery<T> = .init()) throws {
         let db = try connection.setup()
-        try T.delete(in: db, with: options)
+        try T.delete(in: db, with: query)
     }
 
     public func deleteAll() throws {

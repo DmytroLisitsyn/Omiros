@@ -24,13 +24,17 @@
 
 import Foundation
 
-public struct OmirosSaving<T: Omirable> {
+public struct OmirableSaving<T: Omirable> {
 
     var primaryKeys: Set<String> = []
     var indices: [(name: String, keys: [String])] = []
     var columns: [String: SQLiteType] = [:]
     var relations: [String: (typeString: String, key: String)] = [:]
     var enclosed: [AnyEnclosedOmirableList] = []
+
+    public init(_ entity: T) {
+        entity.fill(container: &self)
+    }
 
     public mutating func setPrimaryKey(_ key: T.OmirableKey) {
         primaryKeys.insert(key.stringValue)
@@ -51,15 +55,17 @@ public struct OmirosSaving<T: Omirable> {
         relations[key.stringValue] = (V.omirableName, relatedKey.stringValue)
     }
 
-    public mutating func set<U: Omirable>(_ entity: U, with options: OmirosQueryOptions<U>? = nil) {
-        set([entity], with: options)
+    public mutating func set<U: Omirable>(_ entity: U, with query: OmirosQuery<U>? = nil) {
+        set([entity], with: query)
     }
 
-    public mutating func set<U: Omirable>(_ entities: [U], with options: OmirosQueryOptions<U>? = nil) {
-        enclosed.append(EnclosedOmirableList(entities: entities, options: options))
+    public mutating func set<U: Omirable>(_ entities: [U], with query: OmirosQuery<U>? = nil) {
+        enclosed.append(EnclosedOmirableList(entities: entities, query: query))
     }
 
 }
+
+// MARK: - EnclosedOmirableList
 
 protocol AnyEnclosedOmirableList {
     func save(in db: SQLite) throws
@@ -68,11 +74,11 @@ protocol AnyEnclosedOmirableList {
 struct EnclosedOmirableList<T: Omirable>: AnyEnclosedOmirableList {
 
     let entities: [T]
-    let options: OmirosQueryOptions<T>?
+    let query: OmirosQuery<T>?
 
     func save(in db: SQLite) throws {
-        if let options = options {
-            try T.delete(in: db, with: options)
+        if let query = query {
+            try T.delete(in: db, with: query)
         }
 
         try entities.save(in: db)

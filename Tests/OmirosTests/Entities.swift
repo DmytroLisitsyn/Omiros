@@ -29,7 +29,7 @@ import Omiros
 
 struct Person: Omirable {
 
-    enum OmirableKey: CodingKey {
+    enum OmirableKey: AnyOmirableKey {
         case id
         case firstName
         case lastName
@@ -55,7 +55,7 @@ struct Person: Omirable {
         self.dateOfBirth = dateOfBirth
     }
 
-    init(container: OmirosFetching<Person>) throws {
+    init(container: OmirableFetching<Person>) throws {
         self.init()
 
         id = try container.get(for: .id)
@@ -67,7 +67,7 @@ struct Person: Omirable {
         homePageURL = try container.get(for: .homePageURL)
     }
 
-    func fill(container: inout OmirosSaving<Person>) {
+    func fill(container: inout OmirableSaving<Person>) {
         container.setIndex([.lastName, .firstName])
 
         container.set(id, for: .id)
@@ -85,7 +85,7 @@ struct Person: Omirable {
 
 struct Owner: Omirable {
 
-    enum OmirableKey: CodingKey {
+    enum OmirableKey: AnyOmirableKey {
         case id
         case name
         case dogs
@@ -99,19 +99,19 @@ struct Owner: Omirable {
         self.id = id
     }
 
-    init(container: OmirosFetching<Owner>) throws {
+    init(container: OmirableFetching<Owner>) throws {
         self.init(id: try container.get(for: .id))
 
         name = try container.get(for: .name)
-        dogs = try container.get(with: .init(.equal(.ownerID, id)))
+        dogs = try container.get(with: .init(where: .equal(.ownerID, id)))
     }
 
-    func fill(container: inout OmirosSaving<Owner>) {
+    func fill(container: inout OmirableSaving<Owner>) {
         container.setPrimaryKey(.id)
 
         container.set(id, for: .id)
         container.set(name, for: .name)
-        container.set(dogs, with: .init(.equal(.ownerID, id)))
+        container.set(dogs, with: .init(where: .equal(.ownerID, id)))
     }
 
 }
@@ -120,7 +120,7 @@ struct Owner: Omirable {
 
 struct Dog: Omirable, Equatable {
 
-    enum OmirableKey: CodingKey {
+    enum OmirableKey: AnyOmirableKey {
         case id
         case ownerID
         case name
@@ -140,13 +140,13 @@ struct Dog: Omirable, Equatable {
         self.name = name
     }
 
-    init(container: OmirosFetching<Dog>) throws {
+    init(container: OmirableFetching<Dog>) throws {
         self.init(ownerID: try container.get(for: .ownerID), name: try container.get(for: .name))
 
         collarCaption = try container.get(for: .collarCaption)
     }
 
-    func fill(container: inout OmirosSaving<Dog>) {
+    func fill(container: inout OmirableSaving<Dog>) {
         container.setPrimaryKey(.id)
 
         container.set(id, for: .id)

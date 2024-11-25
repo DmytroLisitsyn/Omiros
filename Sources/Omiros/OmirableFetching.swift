@@ -1,5 +1,5 @@
 //
-//  OmirosDemo
+//  Omiros
 //
 //  Copyright (C) 2021 Dmytro Lisitsyn
 //
@@ -24,12 +24,12 @@
 
 import Foundation
 
-public struct OmirosFetching<T: Omirable> {
+public struct OmirableFetching<T: Omirable> {
 
     private weak var statement: SQLite.Statement?
     private var columnIndexByName: [String: Int32] = [:]
 
-    init(_ statement: SQLite.Statement) {
+    public init(_ statement: SQLite.Statement) {
         self.statement = statement
 
         for columnIndex in 0..<statement.columnCount() {
@@ -45,12 +45,12 @@ public struct OmirosFetching<T: Omirable> {
         return statement!.value(at: columnIndex, type: valueType)
     }
 
-    public func get<U: Omirable>(_ entityType: U.Type = U.self, with options: OmirosQueryOptions<U>) throws -> U? {
-        return try entityType.init(in: statement!.db, with: options)
+    public func get<U: Omirable>(_ entityType: U.Type = U.self, with query: OmirosQuery<U>) throws -> U? {
+        return try entityType.init(in: statement!.db, with: query)
     }
 
-    public func get<U: Omirable>(_ entityType: [U].Type = [U].self, with options: OmirosQueryOptions<U>) throws -> [U] {
-        return try entityType.init(in: statement!.db, with: options)
+    public func get<U: Omirable>(_ entityType: [U].Type = [U].self, with query: OmirosQuery<U>) throws -> [U] {
+        return try entityType.init(in: statement!.db, with: query)
     }
 
 }
