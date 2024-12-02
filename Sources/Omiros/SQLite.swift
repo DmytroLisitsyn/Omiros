@@ -33,15 +33,9 @@ public final class SQLite {
 
     private let pointer: OpaquePointer
 
-    public init(path: String, inMemory: Bool = false, logger: os.Logger? = nil) throws {
+    public init(path: String, flags: Int32, logger: os.Logger? = nil) throws(SQLiteError) {
         self.path = path
         self.logger = logger
-
-        var flags = SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE
-
-        if inMemory {
-            flags = flags | SQLITE_OPEN_MEMORY | SQLITE_OPEN_SHAREDCACHE
-        }
 
         var pointer: OpaquePointer!
         let result = sqlite3_open_v2("file:\(path)", &pointer, flags, nil)
@@ -49,25 +43,23 @@ public final class SQLite {
         try processResult(result)
 
         logger?.log("SQLite opened: \(self.path)")
-
-        try execute("PRAGMA foreign_keys=ON;")
     }
 
     deinit {
-        sqlite3_close_v2(pointer)
+        sqlite3_close(pointer)
         logger?.log("SQLite closed: \(self.path)")
     }
 
-    public func prepare(_ query: String) throws -> Statement {
+    public func prepare(_ query: String) throws(SQLiteError) -> Statement {
         logger?.log("\(query)")
         return try Statement(query, db: self)
     }
 
-    public func execute(_ query: String) throws {
+    public func execute(_ query: String) throws(SQLiteError) {
         try prepare(query).step()
     }
 
-    private func processResult(_ result: Int32) throws {
+    private func processResult(_ result: Int32) throws(SQLiteError) {
         switch result {
         case SQLITE_ROW, SQLITE_DONE, SQLITE_OK:
             break
@@ -89,7 +81,7 @@ extension SQLite {
         let db: SQLite
         let pointer: OpaquePointer
 
-        init(_ query: String, db: SQLite) throws {
+        init(_ query: String, db: SQLite) throws(SQLiteError) {
             var pointer: OpaquePointer?
             let result = sqlite3_prepare_v2(db.pointer, NSString(string: query).utf8String, -1, &pointer, nil)
 
@@ -104,7 +96,7 @@ extension SQLite {
         }
 
         @discardableResult
-        public func step() throws -> Statement {
+        public func step() throws(SQLiteError) -> Statement {
             let result = sqlite3_step(pointer)
             hasMoreRows = (result == SQLITE_ROW)
             try db.processResult(result)
@@ -112,7 +104,7 @@ extension SQLite {
         }
 
         @discardableResult
-        public func bind(_ value: SQLiteType, at index: Int32) throws -> Statement {
+        public func bind(_ value: SQLiteType, at index: Int32) throws(SQLiteError) -> Statement {
             let result = value.sqLiteBind(at: index, statement: self)
             try db.processResult(result)
             return self

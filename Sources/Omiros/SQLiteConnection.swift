@@ -23,77 +23,120 @@
 //
 
 import Foundation
+import SQLite3
 import os
 
 public protocol SQLiteConnection: AnyObject {
-    func setup() throws -> SQLite
+    func read<T>(_ transaction: (_ db: SQLite) throws -> T) async throws -> T
+    func write(_ transaction: (_ db: SQLite) throws -> Void) async throws
+    func deleteFile() async throws
 }
 
-extension SQLiteConnection {
+// MARK: - SQLiteConnectionToFile
 
-    func deleteFile(path: String) throws {
+actor SQLiteConnectionToFile: SQLiteConnection {
+
+    private let file: FileReference
+    private let logger: Logger?
+
+    init(file: FileReference, logger: Logger?) {
+        self.file = file
+        self.logger = logger
+    }
+
+    func read<T>(_ transaction: (_ db: SQLite) throws -> T) throws -> T {
+        let db = try setup()
+        return try transaction(db)
+    }
+
+    func write(_ transaction: (_ db: SQLite) throws -> Void) throws {
+        let db = try setup()
+        try db.execute("BEGIN TRANSACTION;")
+        let result = Result(catching: { try transaction(db) })
+        try db.execute("END TRANSACTION;")
+        try result.get()
+    }
+
+    func deleteFile() throws {
+        let path = try file.resolvePath()
         let fileManager = FileManager.default
         if fileManager.fileExists(atPath: path) {
             try fileManager.removeItem(atPath: path)
         }
     }
 
-    func makeFilePath(name: String) throws -> String {
-        let fileManager = FileManager.default
-        let fileURL = try fileManager.url(for: .documentDirectory, in: .userDomainMask, appropriateFor: nil, create: false).appendingPathComponent("\(name).db")
-        return fileURL.path
+    func setup() throws -> SQLite {
+        let path = try file.resolvePath()
+        let flags = SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE
+        let db = try SQLite(path: path, flags: flags, logger: logger)
+        try db.execute("PRAGMA foreign_keys=ON;")
+        return db
     }
 
 }
 
-final class SQLiteConnectionToFile: SQLiteConnection {
+// MARK: - SQLiteConnectionToMemory
 
-    private let name: String
+actor SQLiteConnectionToMemory: SQLiteConnection {
+
+    private var db: SQLite!
+
+    private let file: FileReference
     private let logger: Logger?
 
-    init(named name: String, logger: Logger?) {
-        self.name = name
+    init(file: FileReference, logger: Logger?) {
+        self.file = file
         self.logger = logger
     }
 
-    public func setup() throws -> SQLite {
-        let filePath = try makeFilePath(name: name)
-        let db = try SQLite(path: filePath, logger: logger)
-        return db
+    func read<T>(_ transaction: (_ db: SQLite) throws -> T) throws -> T {
+        let db = try setup()
+        return try transaction(db)
     }
 
-    func deleteDatabase() throws {
-        let filePath = try makeFilePath(name: name)
-        try deleteFile(path: filePath)
+    func write(_ transaction: (_ db: SQLite) throws -> Void) throws {
+        let db = try setup()
+        try db.execute("BEGIN TRANSACTION;")
+        let result = Result(catching: { try transaction(db) })
+        try db.execute("END TRANSACTION;")
+        try result.get()
     }
 
-}
-
-final class SQLiteConnectionToMemory: SQLiteConnection {
-
-    private let name: String
-    private let logger: Logger?
-
-    private var db: SQLite?
-
-    init(named name: String, logger: Logger?) {
-        self.name = name
-        self.logger = logger
-    }
-
-    public func setup() throws -> SQLite {
-        let filePath = try makeFilePath(name: name)
-
-        if db == nil {
-            db = try SQLite(path: filePath, inMemory: true, logger: logger)
-        }
-
-        let db = try SQLite(path: filePath, inMemory: true, logger: logger)
-        return db
-    }
-
-    func deleteDatabase() {
+    func deleteFile() throws {
         db = nil
     }
+
+    func setup() throws -> SQLite {
+        if let db = db {
+            return db
+        } else {
+            let path = try file.resolvePath()
+            let flags = SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_MEMORY | SQLITE_OPEN_SHAREDCACHE
+            db = try SQLite(path: path, flags: flags, logger: logger)
+            try db.execute("PRAGMA foreign_keys=ON;")
+            return db
+        }
+    }
     
+}
+
+// MARK: - FileReference
+
+enum FileReference {
+
+    case name(String)
+    case path(String)
+
+    func resolvePath() throws -> String {
+        switch self {
+        case .name(let name):
+            return try FileManager.default
+                .url(for: .documentDirectory, in: .userDomainMask, appropriateFor: nil, create: false)
+                .appendingPathComponent("\(name).db")
+                .path
+        case .path(let path):
+            return path
+        }
+    }
+
 }

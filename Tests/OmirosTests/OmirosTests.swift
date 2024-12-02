@@ -35,15 +35,18 @@ class OmirosTests: XCTestCase {
     }
 
     override func tearDown() async throws {
-        try await omiros.deleteAll()
+        try await omiros.deleteFile()
     }
 
     func testFetchingAndSaving() async throws {
+        var fetched = try await omiros.fetchFirst(Person.self)
+        XCTAssert(fetched == nil)
+
         let entity = Person()
 
         try await omiros.save(entity)
 
-        let fetched = try await omiros.fetchFirst(Person.self)
+        fetched = try await omiros.fetchFirst(Person.self)
 
         XCTAssertEqual(entity.firstName, fetched?.firstName)
         XCTAssertEqual(entity.lastName, fetched?.lastName)
@@ -259,24 +262,26 @@ class OmirosTests: XCTestCase {
     }
 
     func testParallelOperations() async throws {
-        try await withThrowingTaskGroup(of: Void.self) { group in
+        async let saving: Void = withThrowingTaskGroup(of: Void.self) { group in
             for _ in 0..<20 {
                 group.addTask {
-                    var entities: [Person] = []
-                    for _ in 0..<100 {
-                        entities.append(.init())
-                    }
-
+                    let entities = stride(from: 0, to: 100, by: 1).map({ _ in Person.init() })
                     try await self.omiros.save(entities)
                 }
-
-                group.addTask {
-                    let _ = try await self.omiros.fetch(Person.self)
-                }
             }
-
             try await group.waitForAll()
         }
+
+        async let fetching: Void = withThrowingTaskGroup(of: Void.self) { group in
+            for _ in 0..<100 {
+                group.addTask {
+                    _ = try await self.omiros.fetch(Person.self)
+                }
+            }
+            try await group.waitForAll()
+        }
+
+        let _ = try await (saving, fetching)
 
         let fetched = try await omiros.fetch(Person.self)
         XCTAssertEqual(fetched.count, 2000)
@@ -293,7 +298,7 @@ class OmirosTests: XCTestCase {
         var fetched = try await omiros.fetch(Person.self)
         XCTAssertEqual(fetched.count, 100)
 
-        try await omiros.deleteAll()
+        try await omiros.deleteFile()
 
         fetched = try await omiros.fetch(Person.self)
         XCTAssertEqual(fetched.count, 0)

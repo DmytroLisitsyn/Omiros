@@ -26,70 +26,60 @@ import Foundation
 import Combine
 import os
 
-public actor Omiros {
+public final class Omiros {
 
     public let connection: SQLiteConnection
 
-    public init(_ name: String = "Omiros", inMemory: Bool = false, logger: Logger? = nil) {
+    public convenience init(_ name: String = "Omiros", inMemory: Bool = false, logger: Logger? = nil) {
+        self.init(file: .name(name), inMemory: inMemory, logger: logger)
+    }
+
+    public convenience init(path: String, inMemory: Bool = false, logger: Logger? = nil) {
+        self.init(file: .path(path), inMemory: inMemory, logger: logger)
+    }
+
+    private init(file: FileReference, inMemory: Bool = false, logger: Logger? = nil) {
         if inMemory {
-            connection = SQLiteConnectionToMemory(named: name, logger: logger)
+            connection = SQLiteConnectionToMemory(file: file, logger: logger)
         } else {
-            connection = SQLiteConnectionToFile(named: name, logger: logger)
+            connection = SQLiteConnectionToFile(file: file, logger: logger)
         }
     }
 
-    public func transaction<T>(_ transaction: (_ db: SQLite) throws -> T) throws -> T {
-        let db = try connection.setup()
-        try db.execute("BEGIN TRANSACTION;")
-
-        let result: Result<T, Error>
-        do {
-            result = .success(try transaction(db))
-        } catch {
-            result = .failure(error)
+    public func count<T: Omirable>(_ type: T.Type = T.self, with query: OmirosQuery<T> = .init()) async throws -> Int {
+        return try await connection.read { db in
+            return try T.count(in: db, with: query)
         }
-
-        try db.execute("END TRANSACTION;")
-        return try result.get()
     }
 
-    public func count<T: Omirable>(_ type: T.Type = T.self, with query: OmirosQuery<T> = .init()) throws -> Int {
-        let db = try connection.setup()
-        return try T.count(in: db, with: query)
-    }
-
-    public func fetchFirst<T: Omirable>(_ type: T.Type = T.self, with query: OmirosQuery<T> = .init()) throws -> T? {
-        let db = try connection.setup()
-        return try T.init(in: db, with: query)
-    }
-
-    public func fetch<T: Omirable>(_ type: T.Type = T.self, with query: OmirosQuery<T> = .init()) throws -> [T] {
-        let db = try connection.setup()
-        return try [T].init(in: db, with: query)
-    }
-
-    public func save<T: Omirable>(_ entity: T) throws {
-        try transaction(entity.save)
-    }
-
-    public func save<T: Omirable>(_ entities: [T]) throws {
-        try transaction(entities.save)
-    }
-
-    public func delete<T: Omirable>(_ type: T.Type = T.self, with query: OmirosQuery<T> = .init()) throws {
-        let db = try connection.setup()
-        try T.delete(in: db, with: query)
-    }
-
-    public func deleteAll() throws {
-        switch connection {
-        case let connection as SQLiteConnectionToFile:
-            try connection.deleteDatabase()
-        case let connection as SQLiteConnectionToMemory:
-            connection.deleteDatabase()
-        default:
-            break
+    public func fetchFirst<T: Omirable>(_ type: T.Type = T.self, with query: OmirosQuery<T> = .init()) async throws -> T? {
+        return try await connection.read { db in
+            return try T.init(in: db, with: query)
         }
+    }
+
+    public func fetch<T: Omirable>(_ type: T.Type = T.self, with query: OmirosQuery<T> = .init()) async throws -> [T] {
+        return try await connection.read { db in
+            return try [T].init(in: db, with: query)
+        }
+    }
+
+    public func save<T: Omirable>(_ entity: T) async throws {
+        try await connection.write(entity.save)
+    }
+
+    public func save<T: Omirable>(_ entities: [T]) async throws {
+        try await connection.write(entities.save)
+    }
+
+    public func delete<T: Omirable>(_ type: T.Type = T.self, with query: OmirosQuery<T> = .init()) async throws {
+        try await connection.write { db in
+            try T.delete(in: db, with: query)
+        }
+    }
+
+    public func deleteFile() async throws {
+        try await connection.deleteFile()
     }
 
 }
