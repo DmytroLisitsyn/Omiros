@@ -104,13 +104,13 @@ extension SQLite {
         }
 
         @discardableResult
-        public func bind(_ value: SQLiteType, at index: Int32) throws(SQLiteError) -> Statement {
+        public func bind(_ value: SQLiteValue, at index: Int32) throws(SQLiteError) -> Statement {
             let result = value.sqLiteBind(at: index, statement: self)
             try db.processResult(result)
             return self
         }
 
-        public func value<T: SQLiteType>(at index: Int32, type: T.Type = T.self) -> T {
+        public func value<T: SQLiteValue>(at index: Int32, type: T.Type = T.self) -> T {
             return T.sqLiteValue(at: index, statement: self)
         }
 

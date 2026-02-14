@@ -37,7 +37,7 @@ public struct OmirableFetching<T: Omirable> {
         }
     }
 
-    public func get<U: SQLiteType>(_ valueType: U.Type = U.self, for key: T.OmirableKey) throws -> U {
+    public func get<U: SQLiteValue>(_ valueType: U.Type = U.self, for key: T.OmirableKey) throws -> U {
         guard let columnIndex = columnIndexByName[key.stringValue] else {
             throw OmirosError.noColumnForKey(key.stringValue)
         }

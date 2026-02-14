@@ -80,8 +80,8 @@ class OmirosTests: XCTestCase {
             ])
         ]))
 
-        let fetched = try? await omiros.fetch(Person.self, with: query)
-        XCTAssertEqual(fetched?.count, 200)
+        let fetched = try await omiros.fetch(Person.self, with: query)
+        XCTAssertEqual(fetched.count, 200)
     }
 
     func testCounting() async throws {

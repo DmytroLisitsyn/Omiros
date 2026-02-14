@@ -28,7 +28,7 @@ public struct OmirableSaving<T: Omirable> {
 
     var primaryKeys: Set<String> = []
     var indices: [(name: String, keys: [String])] = []
-    var columns: [String: SQLiteType] = [:]
+    var columns: [String: SQLiteValue] = [:]
     var relations: [String: (typeString: String, key: String)] = [:]
     var enclosed: [AnyEnclosedOmirableList] = []
 
@@ -46,11 +46,11 @@ public struct OmirableSaving<T: Omirable> {
         indices.append((name, keyStrings))
     }
 
-    public mutating func set<U: SQLiteType>(_ value: U, for key: T.OmirableKey) {
+    public mutating func set<U: SQLiteValue>(_ value: U, for key: T.OmirableKey) {
         columns[key.stringValue] = value
     }
 
-    public mutating func set<U: SQLiteType, V: Omirable>(_ value: U, for key: T.OmirableKey, relatedTo relatedType: V.Type = V.self, key relatedKey: V.OmirableKey) {
+    public mutating func set<U: SQLiteValue, V: Omirable>(_ value: U, for key: T.OmirableKey, relatedTo relatedType: V.Type = V.self, key relatedKey: V.OmirableKey) {
         columns[key.stringValue] = value
         relations[key.stringValue] = (V.omirableName, relatedKey.stringValue)
     }

@@ -27,11 +27,11 @@ import Foundation
 public struct OmirosQuery<T: Omirable> {
 
     public indirect enum Condition {
-        case equal(_ key: T.OmirableKey, _ value: SQLiteType?)
-        case greaterThan(_ key: T.OmirableKey, _ value: SQLiteType)
-        case lessThan(_ key: T.OmirableKey, _ value: SQLiteType)
-        case greaterThanOrEqual(_ key: T.OmirableKey, _ value: SQLiteType)
-        case lessThanOrEqual(_ key: T.OmirableKey, _ value: SQLiteType)
+        case equal(_ key: T.OmirableKey, _ value: SQLiteValue?)
+        case greaterThan(_ key: T.OmirableKey, _ value: SQLiteValue)
+        case lessThan(_ key: T.OmirableKey, _ value: SQLiteValue)
+        case greaterThanOrEqual(_ key: T.OmirableKey, _ value: SQLiteValue)
+        case lessThanOrEqual(_ key: T.OmirableKey, _ value: SQLiteValue)
         case like(_ key: T.OmirableKey, _ value: String)
         case all([Condition])
         case any([Condition])
@@ -55,11 +55,13 @@ public struct OmirosQuery<T: Omirable> {
         self.limit = limit
     }
 
-    public func sqlSubquery() -> String {
+    public func sqlSubqueryV2() -> (string: String, values: [SQLiteValue]) {
         var components: [String] = []
+        var values: [SQLiteValue] = []
 
-        if let condition = condition, let conditionsString = sqlWhereConditions(from: condition) {
-            components.append("WHERE \(conditionsString)")
+        if let condition = condition, let format = sqlWhereConditionsV2(from: condition, values: []) {
+            components.append("WHERE \(format.string)")
+            values = format.values
         }
 
         if !order.isEmpty {
@@ -87,72 +89,88 @@ public struct OmirosQuery<T: Omirable> {
             components.append("OFFSET \(offset)")
         }
 
-        return components.joined(separator: " ")
+        return (components.joined(separator: " "), values)
     }
 
-    private func sqlWhereConditions(from condition: OmirosQuery.Condition?) -> String? {
+    private func sqlWhereConditionsV2(from condition: OmirosQuery.Condition?, values: [SQLiteValue]) -> (string: String, values: [SQLiteValue])? {
         switch condition {
         case .equal(let key, let value):
             if let value = value {
-                return "\(key.stringValue) = \(value.sqLiteQueryValue)"
+                return ("\(key.stringValue) = ?", values + [value])
             } else {
-                return "\(key.stringValue) IS NULL"
+                return ("\(key.stringValue) IS NULL", values)
             }
         case .greaterThan(let key, let value):
-            return "\(key.stringValue) > \(value.sqLiteQueryValue)"
+            return ("\(key.stringValue) > ?", values + [value])
         case .lessThan(let key, let value):
-            return "\(key.stringValue) < \(value.sqLiteQueryValue)"
+            return ("\(key.stringValue) < ?", values + [value])
         case .greaterThanOrEqual(let key, let value):
-            return "\(key.stringValue) >= \(value.sqLiteQueryValue)"
+            return ("\(key.stringValue) >= ?", values + [value])
         case .lessThanOrEqual(let key, let value):
-            return "\(key.stringValue) <= \(value.sqLiteQueryValue)"
+            return ("\(key.stringValue) <= ?", values + [value])
         case .like(let key, let value):
-            return "\(key.stringValue) LIKE \(value.sqLiteQueryValue)"
-        case .all(let conditions):
-            let conditionStrings = conditions.compactMap(sqlWhereConditions)
-            if conditionStrings.isEmpty {
-                return nil
-            } else {
-                return "(\(conditionStrings.joined(separator: " AND ")))"
-            }
-        case .any(let conditions):
-            let conditionStrings = conditions.compactMap(sqlWhereConditions)
-            if conditionStrings.isEmpty {
-                return nil
-            } else {
-                return "(\(conditionStrings.joined(separator: " OR ")))"
-            }
+            return ("\(key.stringValue) LIKE ?", values + [value])
         case .not(let condition):
-            return reversedSQLWhereConditions(from: condition)
+            return reversedSQLWhereConditionsV2(from: condition, values: values)
+        case .all(let conditions):
+            guard conditions.count > 0 else {
+                return nil
+            }
+
+            var conditionStrings: [String] = []
+            var values = values
+            for condition in conditions {
+                if let format = sqlWhereConditionsV2(from: condition, values: []) {
+                    conditionStrings.append(format.string)
+                    values += format.values
+                }
+            }
+
+            return ("(\(conditionStrings.joined(separator: " AND ")))", values)
+        case .any(let conditions):
+            guard conditions.count > 0 else {
+                return nil
+            }
+
+            var conditionStrings: [String] = []
+            var values = values
+            for condition in conditions {
+                if let format = sqlWhereConditionsV2(from: condition, values: []) {
+                    conditionStrings.append(format.string)
+                    values += format.values
+                }
+            }
+
+            return ("(\(conditionStrings.joined(separator: " OR ")))", values)
         case .none:
             return nil
         }
     }
 
-    private func reversedSQLWhereConditions(from condition: OmirosQuery.Condition?) -> String? {
+    private func reversedSQLWhereConditionsV2(from condition: OmirosQuery.Condition?, values: [SQLiteValue]) -> (String, [SQLiteValue])? {
         switch condition {
         case .equal(let key, let value):
             if let value = value {
-                return "\(key.stringValue) != \(value.sqLiteQueryValue)"
+                return ("\(key.stringValue) != ?", values + [value])
             } else {
-                return "\(key.stringValue) IS NOT NULL"
+                return ("\(key.stringValue) IS NOT NULL", values)
             }
         case .greaterThan(let key, let value):
-            return sqlWhereConditions(from: .lessThanOrEqual(key, value))
+            return sqlWhereConditionsV2(from: .lessThanOrEqual(key, value), values: values)
         case .lessThan(let key, let value):
-            return sqlWhereConditions(from: .greaterThanOrEqual(key, value))
+            return sqlWhereConditionsV2(from: .greaterThanOrEqual(key, value), values: values)
         case .greaterThanOrEqual(let key, let value):
-            return sqlWhereConditions(from: .lessThan(key, value))
+            return sqlWhereConditionsV2(from: .lessThan(key, value), values: values)
         case .lessThanOrEqual(let key, let value):
-            return sqlWhereConditions(from: .greaterThan(key, value))
+            return sqlWhereConditionsV2(from: .greaterThan(key, value), values: values)
         case .like(let key, let value):
-            return "\(key.stringValue) NOT LIKE \(value.sqLiteQueryValue)"
+            return ("\(key.stringValue) NOT LIKE ?", values + [value])
         case .all(let conditions):
-            return sqlWhereConditions(from: .any(conditions.map(Condition.not)))
+            return sqlWhereConditionsV2(from: .any(conditions.map(Condition.not)), values: values)
         case .any(let conditions):
-            return sqlWhereConditions(from: .all(conditions.map(Condition.not)))
+            return sqlWhereConditionsV2(from: .all(conditions.map(Condition.not)), values: values)
         case .not(let condition):
-            return reversedSQLWhereConditions(from: condition)
+            return reversedSQLWhereConditionsV2(from: condition, values: values)
         case .none:
             return nil
         }

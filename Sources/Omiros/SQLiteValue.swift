@@ -25,21 +25,15 @@
 import Foundation
 import SQLite3
 
-public protocol SQLiteType {
+public protocol SQLiteValue {
     @inlinable static var sqLiteType: String { get }
-    var sqLiteQueryValue: String { get }
-
     func sqLiteBind(at index: Int32, statement: SQLite.Statement) -> Int32
     static func sqLiteValue(at index: Int32, statement: SQLite.Statement) -> Self
 }
 
-extension Optional: SQLiteType where Wrapped: SQLiteType {
+extension Optional: SQLiteValue where Wrapped: SQLiteValue {
 
     public static var sqLiteType: String {
-        return "NULL"
-    }
-
-    public var sqLiteQueryValue: String {
         return "NULL"
     }
 
@@ -62,14 +56,10 @@ extension Optional: SQLiteType where Wrapped: SQLiteType {
 
 }
 
-extension Bool: SQLiteType {
+extension Bool: SQLiteValue {
 
     public static var sqLiteType: String {
         return "INTEGER"
-    }
-
-    public var sqLiteQueryValue: String {
-        return "\(self ? 1 : 0)"
     }
 
     public func sqLiteBind(at index: Int32, statement: SQLite.Statement) -> Int32 {
@@ -82,14 +72,10 @@ extension Bool: SQLiteType {
 
 }
 
-extension Int: SQLiteType {
+extension Int: SQLiteValue {
 
     public static var sqLiteType: String {
         return "INTEGER"
-    }
-
-    public var sqLiteQueryValue: String {
-        return "\(self)"
     }
 
     public func sqLiteBind(at index: Int32, statement: SQLite.Statement) -> Int32 {
@@ -102,14 +88,10 @@ extension Int: SQLiteType {
 
 }
 
-extension Double: SQLiteType {
+extension Double: SQLiteValue {
 
     public static var sqLiteType: String {
         return "REAL"
-    }
-
-    public var sqLiteQueryValue: String {
-        return "\(self)"
     }
 
     public func sqLiteBind(at index: Int32, statement: SQLite.Statement) -> Int32 {
@@ -122,14 +104,10 @@ extension Double: SQLiteType {
 
 }
 
-extension String: SQLiteType {
+extension String: SQLiteValue {
 
     public static var sqLiteType: String {
         return "TEXT"
-    }
-
-    public var sqLiteQueryValue: String {
-        return "'\(self)'"
     }
 
     public func sqLiteBind(at index: Int32, statement: SQLite.Statement) -> Int32 {
@@ -142,14 +120,10 @@ extension String: SQLiteType {
 
 }
 
-extension Data: SQLiteType {
+extension Data: SQLiteValue {
 
     public static var sqLiteType: String {
         return "BLOB"
-    }
-
-    public var sqLiteQueryValue: String {
-        fatalError("Not supported BLOB query.")
     }
 
     public func sqLiteBind(at index: Int32, statement: SQLite.Statement) -> Int32 {
@@ -165,14 +139,10 @@ extension Data: SQLiteType {
 
 }
 
-extension Date: SQLiteType {
+extension Date: SQLiteValue {
 
     public static var sqLiteType: String {
         return TimeInterval.sqLiteType
-    }
-
-    public var sqLiteQueryValue: String {
-        return timeIntervalSince1970.sqLiteQueryValue
     }
 
     public func sqLiteBind(at index: Int32, statement: SQLite.Statement) -> Int32 {
@@ -185,14 +155,10 @@ extension Date: SQLiteType {
 
 }
 
-extension URL: SQLiteType {
+extension URL: SQLiteValue {
 
     public static var sqLiteType: String {
         return String.sqLiteType
-    }
-
-    public var sqLiteQueryValue: String {
-        return absoluteString.sqLiteQueryValue
     }
 
     public func sqLiteBind(at index: Int32, statement: SQLite.Statement) -> Int32 {

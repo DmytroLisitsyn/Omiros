@@ -44,8 +44,14 @@ extension Omirable {
 
         var query = query
         query.limit = 1
-        let sqlQuery = "SELECT * FROM \(Self.omirableName) \(query.sqlSubquery());"
-        let statement = try db.prepare(sqlQuery).step()
+
+        let format = query.sqlSubqueryV2()
+        let sqlQuery = "SELECT * FROM \(Self.omirableName) \(format.string);"
+        let statement = try db.prepare(sqlQuery)
+        for (index, value) in format.values.enumerated() {
+            try statement.bind(value, at: Int32(index + 1))
+        }
+        try statement.step()
 
         if statement.hasMoreRows {
             let container = OmirableFetching<Self>(statement)
@@ -58,8 +64,13 @@ extension Omirable {
     public static func count(in db: SQLite, with query: OmirosQuery<Self>) throws -> Int {
         guard try isSetup(in: db) else { return 0 }
 
-        let sqlQuery = "SELECT COUNT(*) FROM \(omirableName) \(query.sqlSubquery());"
-        let statement = try db.prepare(sqlQuery).step()
+        let format = query.sqlSubqueryV2()
+        let sqlQuery = "SELECT COUNT(*) FROM \(Self.omirableName) \(format.string);"
+        let statement = try db.prepare(sqlQuery)
+        for (index, value) in format.values.enumerated() {
+            try statement.bind(value, at: Int32(index + 1))
+        }
+        try statement.step()
         return statement.value(at: 0)
     }
 
@@ -70,7 +81,13 @@ extension Omirable {
     public static func delete(in db: SQLite, with query: OmirosQuery<Self>) throws {
         guard try isSetup(in: db) else { return }
 
-        try db.execute("DELETE FROM \(omirableName) \(query.sqlSubquery());")
+        let format = query.sqlSubqueryV2()
+        let sqlQuery = "DELETE FROM \(Self.omirableName) \(format.string);"
+        let statement = try db.prepare(sqlQuery)
+        for (index, value) in format.values.enumerated() {
+            try statement.bind(value, at: Int32(index + 1))
+        }
+        try statement.step()
     }
 
     public static func isSetup(in db: SQLite) throws -> Bool {
@@ -161,8 +178,13 @@ extension Array where Element: Omirable {
             return
         }
 
-        let sqlQuery = "SELECT * FROM \(Element.omirableName) \(query.sqlSubquery());"
-        let statement = try db.prepare(sqlQuery).step()
+        let format = query.sqlSubqueryV2()
+        let sqlQuery = "SELECT * FROM \(Element.omirableName) \(format.string);"
+        let statement = try db.prepare(sqlQuery)
+        for (index, value) in format.values.enumerated() {
+            try statement.bind(value, at: Int32(index + 1))
+        }
+        try statement.step()
         let container = OmirableFetching<Element>(statement)
 
         self.init()
