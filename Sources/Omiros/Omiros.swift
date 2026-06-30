@@ -47,21 +47,21 @@ public final class Omiros {
     }
 
     public func count<T: Omirable>(_ type: T.Type = T.self, with query: OmirosQuery<T> = .init()) async throws -> Int {
-        return try await connection.read { db in
+        return try await connection.read({ db in
             return try T.count(in: db, with: query)
-        }
+        }, defaultValue: 0)
     }
 
     public func fetchFirst<T: Omirable>(_ type: T.Type = T.self, with query: OmirosQuery<T> = .init()) async throws -> T? {
-        return try await connection.read { db in
+        return try await connection.read({ db in
             return try T.init(in: db, with: query)
-        }
+        }, defaultValue: nil)
     }
 
     public func fetch<T: Omirable>(_ type: T.Type = T.self, with query: OmirosQuery<T> = .init()) async throws -> [T] {
-        return try await connection.read { db in
+        return try await connection.read({ db in
             return try [T].init(in: db, with: query)
-        }
+        }, defaultValue: [])
     }
 
     public func save<T: Omirable>(_ entity: T) async throws {

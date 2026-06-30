@@ -27,7 +27,7 @@ import SQLite3
 import os
 
 public protocol SQLiteConnection: AnyObject {
-    func read<T>(_ transaction: (_ db: SQLite) throws -> T) async throws -> T
+    func read<T>(_ transaction: (_ db: SQLite) throws -> T, defaultValue: T) async throws -> T
     func write(_ transaction: (_ db: SQLite) throws -> Void) async throws
     func deleteFile() async throws
 }
@@ -46,11 +46,14 @@ actor SQLiteConnectionToFile: SQLiteConnection {
         self.logger = logger
     }
 
-    nonisolated func read<T>(_ transaction: (_ db: SQLite) throws -> T) async throws -> T {
-        if await dbForWriting == nil {
-            try await setupForWriting()
+    nonisolated func read<T>(_ transaction: (_ db: SQLite) throws -> T, defaultValue: T) throws -> T {
+        let path = try file.resolvePath()
+
+        guard Self.isSQLiteFileReady(atPath: path) else {
+            return defaultValue
         }
-        let db = try Self.setupForReading(file: file, logger: logger)
+
+        let db = try Self.setupForReading(path: path, logger: logger)
         return try transaction(db)
     }
 
@@ -77,28 +80,58 @@ actor SQLiteConnectionToFile: SQLiteConnection {
         }
     }
 
-    private static func setupForReading(file: SQLiteFileReference, logger: Logger?) throws -> SQLite {
+    private func setupForWriting() throws -> SQLite {
+        if let db = dbForWriting {
+            return db
+        }
+
         let path = try file.resolvePath()
+        let db: SQLite
+        
+        if Self.isSQLiteFileReady(atPath: path) {
+            db = try Self.setupForReading(path: path, logger: logger)
+        } else {
+            db = try SQLite(path: path, flags: SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, logger: logger)
+            try db.execute("PRAGMA journal_mode=WAL;")
+            try db.execute("PRAGMA synchronous=NORMAL;")
+            try db.execute("PRAGMA foreign_keys=ON;")
+            try db.execute("PRAGMA busy_timeout=3000;")
+        }
+
+        dbForWriting = db
+        return db
+    }
+
+    private static func setupForReading(path: String, logger: Logger?) throws -> SQLite {
         let db = try SQLite(path: path, flags: SQLITE_OPEN_READWRITE, logger: logger)
         try db.execute("PRAGMA foreign_keys=ON;")
         try db.execute("PRAGMA busy_timeout=3000;")
         return db
     }
 
-    @discardableResult
-    private func setupForWriting() throws -> SQLite {
-        if let db = dbForWriting {
-            return db
-        } else {
-            let path = try file.resolvePath()
-            let db = try SQLite(path: path, flags: SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, logger: logger)
-            try db.execute("PRAGMA journal_mode=WAL;")
-            try db.execute("PRAGMA synchronous=NORMAL;")
-            try db.execute("PRAGMA foreign_keys=ON;")
-            try db.execute("PRAGMA busy_timeout=3000;")
-            dbForWriting = db
-            return db
+    private static func isSQLiteFileReady(atPath path: String, fileManager: FileManager = .default) -> Bool {
+        guard fileManager.fileExists(atPath: path) else {
+            return false
         }
+
+        guard let fileHandle = FileHandle(forReadingAtPath: path) else {
+            return false
+        }
+
+        defer {
+            try? fileHandle.close()
+        }
+
+        guard let headerData = try? fileHandle.read(upToCount: 20), headerData.count == 20 else {
+            return false
+        }
+
+        // Offset 18: File Format Write Version (1 = legacy, 2 = WAL)
+        // Offset 19: File Format Read Version (1 = legacy, 2 = WAL)
+        let writeVersion = headerData[18]
+        let readVersion = headerData[19]
+        let isWAL = writeVersion == 2 || readVersion == 2
+        return isWAL
     }
 
 }
@@ -117,7 +150,7 @@ actor SQLiteConnectionToMemory: SQLiteConnection {
         self.logger = logger
     }
 
-    func read<T>(_ transaction: (_ db: SQLite) throws -> T) throws -> T {
+    func read<T>(_ transaction: (_ db: SQLite) throws -> T, defaultValue: T) throws -> T {
         let db = try setup()
         return try transaction(db)
     }

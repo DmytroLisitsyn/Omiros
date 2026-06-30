@@ -29,10 +29,10 @@ enum SQLiteFileReference {
     case name(String)
     case path(String)
 
-    func resolvePath() throws -> String {
+    func resolvePath(with fileManager: FileManager = .default) throws -> String {
         switch self {
         case .name(let name):
-            return try FileManager.default
+            return try fileManager
                 .url(for: .documentDirectory, in: .userDomainMask, appropriateFor: nil, create: false)
                 .appendingPathComponent("\(name).db")
                 .path
