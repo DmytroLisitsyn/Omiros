@@ -1,5 +1,5 @@
 //
-//  OmirosTests
+//  OmirosInFileTests
 //
 //  Copyright (C) 2021 Dmytro Lisitsyn
 //
@@ -26,12 +26,12 @@ import XCTest
 import os
 @testable import Omiros
 
-class OmirosTests: XCTestCase {
+class OmirosInFileTests: XCTestCase {
 
     var omiros: Omiros!
 
     override func setUp() {
-        omiros = Omiros("OmirosTests", inMemory: true)
+        omiros = Omiros("OmirosInFileTests", inMemory: false)
     }
 
     override func tearDown() async throws {

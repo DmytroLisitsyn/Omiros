@@ -36,41 +36,69 @@ public protocol SQLiteConnection: AnyObject {
 
 actor SQLiteConnectionToFile: SQLiteConnection {
 
-    private let file: FileReference
+    private var dbForWriting: SQLite?
+
+    private let file: SQLiteFileReference
     private let logger: Logger?
 
-    init(file: FileReference, logger: Logger?) {
+    init(file: SQLiteFileReference, logger: Logger?) {
         self.file = file
         self.logger = logger
     }
 
-    func read<T>(_ transaction: (_ db: SQLite) throws -> T) throws -> T {
-        let db = try setup()
+    nonisolated func read<T>(_ transaction: (_ db: SQLite) throws -> T) async throws -> T {
+        if await dbForWriting == nil {
+            try await setupForWriting()
+        }
+        let db = try Self.setupForReading(file: file, logger: logger)
         return try transaction(db)
     }
 
     func write(_ transaction: (_ db: SQLite) throws -> Void) throws {
-        let db = try setup()
+        let db = try setupForWriting()
         try db.execute("BEGIN TRANSACTION;")
-        let result = Result(catching: { try transaction(db) })
-        try db.execute("END TRANSACTION;")
-        try result.get()
-    }
-
-    func deleteFile() throws {
-        let path = try file.resolvePath()
-        let fileManager = FileManager.default
-        if fileManager.fileExists(atPath: path) {
-            try fileManager.removeItem(atPath: path)
+        do {
+            try transaction(db)
+            try db.execute("END TRANSACTION;")
+        } catch {
+            try? db.execute("ROLLBACK TRANSACTION;")
+            throw error
         }
     }
 
-    func setup() throws -> SQLite {
+    func deleteFile() async throws {
+        dbForWriting = nil
+
         let path = try file.resolvePath()
-        let flags = SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE
-        let db = try SQLite(path: path, flags: flags, logger: logger)
+        let filesToDelete = [path, path + "-wal", path + "-shm"]
+        let fileManager = FileManager.default
+        for filePath in filesToDelete where fileManager.fileExists(atPath: filePath) {
+            try fileManager.removeItem(atPath: filePath)
+        }
+    }
+
+    private static func setupForReading(file: SQLiteFileReference, logger: Logger?) throws -> SQLite {
+        let path = try file.resolvePath()
+        let db = try SQLite(path: path, flags: SQLITE_OPEN_READWRITE, logger: logger)
         try db.execute("PRAGMA foreign_keys=ON;")
+        try db.execute("PRAGMA busy_timeout=3000;")
         return db
+    }
+
+    @discardableResult
+    private func setupForWriting() throws -> SQLite {
+        if let db = dbForWriting {
+            return db
+        } else {
+            let path = try file.resolvePath()
+            let db = try SQLite(path: path, flags: SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, logger: logger)
+            try db.execute("PRAGMA journal_mode=WAL;")
+            try db.execute("PRAGMA synchronous=NORMAL;")
+            try db.execute("PRAGMA foreign_keys=ON;")
+            try db.execute("PRAGMA busy_timeout=3000;")
+            dbForWriting = db
+            return db
+        }
     }
 
 }
@@ -81,10 +109,10 @@ actor SQLiteConnectionToMemory: SQLiteConnection {
 
     private var db: SQLite!
 
-    private let file: FileReference
+    private let file: SQLiteFileReference
     private let logger: Logger?
 
-    init(file: FileReference, logger: Logger?) {
+    init(file: SQLiteFileReference, logger: Logger?) {
         self.file = file
         self.logger = logger
     }
@@ -97,16 +125,20 @@ actor SQLiteConnectionToMemory: SQLiteConnection {
     func write(_ transaction: (_ db: SQLite) throws -> Void) throws {
         let db = try setup()
         try db.execute("BEGIN TRANSACTION;")
-        let result = Result(catching: { try transaction(db) })
-        try db.execute("END TRANSACTION;")
-        try result.get()
+        do {
+            try transaction(db)
+            try db.execute("END TRANSACTION;")
+        } catch {
+            try? db.execute("ROLLBACK TRANSACTION;")
+            throw error
+        }
     }
 
     func deleteFile() throws {
         db = nil
     }
 
-    func setup() throws -> SQLite {
+    private func setup() throws -> SQLite {
         if let db = db {
             return db
         } else {
@@ -118,25 +150,4 @@ actor SQLiteConnectionToMemory: SQLiteConnection {
         }
     }
     
-}
-
-// MARK: - FileReference
-
-enum FileReference {
-
-    case name(String)
-    case path(String)
-
-    func resolvePath() throws -> String {
-        switch self {
-        case .name(let name):
-            return try FileManager.default
-                .url(for: .documentDirectory, in: .userDomainMask, appropriateFor: nil, create: false)
-                .appendingPathComponent("\(name).db")
-                .path
-        case .path(let path):
-            return path
-        }
-    }
-
 }

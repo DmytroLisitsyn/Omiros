@@ -70,9 +70,7 @@ public final class SQLite {
         }
     }
 
-}
-
-extension SQLite {
+    // MARK: Statement
 
     public final class Statement {
 

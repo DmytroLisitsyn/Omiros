@@ -38,7 +38,7 @@ public final class Omiros {
         self.init(file: .path(path), inMemory: inMemory, logger: logger)
     }
 
-    private init(file: FileReference, inMemory: Bool = false, logger: Logger? = nil) {
+    private init(file: SQLiteFileReference, inMemory: Bool, logger: Logger?) {
         if inMemory {
             connection = SQLiteConnectionToMemory(file: file, logger: logger)
         } else {
