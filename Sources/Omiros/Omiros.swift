@@ -72,6 +72,10 @@ public final class Omiros {
         try await connection.write(entities.save)
     }
 
+    public func save(_ transaction: (_ db: SQLite) throws -> Void) async throws {
+        try await connection.write(transaction)
+    }
+
     public func delete<T: Omirable>(_ type: T.Type = T.self, with query: OmirosQuery<T> = .init()) async throws {
         try await connection.write { db in
             try T.delete(in: db, with: query)

@@ -108,6 +108,11 @@ public final class SQLite {
             return self
         }
 
+        public func reset() throws(SQLiteError) {
+            let result = sqlite3_reset(pointer)
+            try db.processResult(result)
+        }
+
         public func value<T: SQLiteValue>(at index: Int32, type: T.Type = T.self) -> T {
             return T.sqLiteValue(at: index, statement: self)
         }

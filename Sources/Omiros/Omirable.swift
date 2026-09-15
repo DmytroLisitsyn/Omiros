@@ -45,7 +45,7 @@ extension Omirable {
         var query = query
         query.limit = 1
 
-        let format = query.sqlSubqueryV2()
+        let format = query.sqlSubquery()
         let sqlQuery = "SELECT * FROM \(Self.omirableName) \(format.string);"
         let statement = try db.prepare(sqlQuery)
         for (index, value) in format.values.enumerated() {
@@ -64,7 +64,7 @@ extension Omirable {
     public static func count(in db: SQLite, with query: OmirosQuery<Self>) throws -> Int {
         guard try isSetup(in: db) else { return 0 }
 
-        let format = query.sqlSubqueryV2()
+        let format = query.sqlSubquery()
         let sqlQuery = "SELECT COUNT(*) FROM \(Self.omirableName) \(format.string);"
         let statement = try db.prepare(sqlQuery)
         for (index, value) in format.values.enumerated() {
@@ -81,7 +81,7 @@ extension Omirable {
     public static func delete(in db: SQLite, with query: OmirosQuery<Self>) throws {
         guard try isSetup(in: db) else { return }
 
-        let format = query.sqlSubqueryV2()
+        let format = query.sqlSubquery()
         let sqlQuery = "DELETE FROM \(Self.omirableName) \(format.string);"
         let statement = try db.prepare(sqlQuery)
         for (index, value) in format.values.enumerated() {
@@ -178,7 +178,7 @@ extension Array where Element: Omirable {
             return
         }
 
-        let format = query.sqlSubqueryV2()
+        let format = query.sqlSubquery()
         let sqlQuery = "SELECT * FROM \(Element.omirableName) \(format.string);"
         let statement = try db.prepare(sqlQuery)
         for (index, value) in format.values.enumerated() {
@@ -201,11 +201,12 @@ extension Array where Element: Omirable {
         var index = 0
         var container = OmirableSaving(self[index])
 
+        try Element.setup(in: db, with: container)
+
         let columnKeys = container.columns.keys
         let joinedColumnList = columnKeys.joined(separator: ",")
         let formatString = [String](repeating: "?", count: columnKeys.count).joined(separator: ",")
         var sqlQuery = "INSERT INTO \(Element.omirableName)(\(joinedColumnList)) VALUES(\(formatString))"
-
         if !container.primaryKeys.isEmpty {
             let conflictedKeysString = container.primaryKeys.joined(separator: ",")
             let keys = Set(columnKeys).subtracting(container.primaryKeys)
@@ -216,26 +217,34 @@ extension Array where Element: Omirable {
                 sqlQuery += " ON CONFLICT(\(conflictedKeysString)) DO UPDATE SET \(updateString)"
             }
         }
-
         sqlQuery += ";"
 
-        try Element.setup(in: db, with: container)
-
+        let statement = try db.prepare(sqlQuery)
+        var enclosedPerName: [String: AnyEnclosedOmirableList] = [:]
         while true {
-            let statement = try db.prepare(sqlQuery)
-            for (index, columnKey) in columnKeys.enumerated() {
-                try statement.bind(container.columns[columnKey]!, at: Int32(index + 1))
+            for (columnIndex, columnKey) in columnKeys.enumerated() {
+                try statement.bind(container.columns[columnKey]!, at: Int32(columnIndex + 1))
             }
             try statement.step()
+            try statement.reset()
 
             for enclosedEntityList in container.enclosed {
-                try enclosedEntityList.save(in: db)
+                let name = enclosedEntityList.omirableName
+                if var existing = enclosedPerName[name] {
+                    existing.append(enclosedEntityList)
+                    enclosedPerName[name] = existing
+                } else {
+                    enclosedPerName[name] = enclosedEntityList
+                }
             }
 
             index += 1
             guard index < count else { break }
 
             container = OmirableSaving(self[index])
+        }
+        for enclosedEntityList in enclosedPerName.values {
+            try enclosedEntityList.save(in: db)
         }
     }
 

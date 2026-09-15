@@ -45,11 +45,13 @@ public struct OmirableFetching<T: Omirable> {
         return statement!.value(at: columnIndex, type: valueType)
     }
 
-    public func get<U: Omirable>(_ entityType: U.Type = U.self, with query: OmirosQuery<U>) throws -> U? {
+    public func get<U: Omirable>(_ entityType: U.Type = U.self, where condition: OmirosQuery<U>.Condition) throws -> U? {
+        let query = OmirosQuery(where: condition)
         return try entityType.init(in: statement!.db, with: query)
     }
 
-    public func get<U: Omirable>(_ entityType: [U].Type = [U].self, with query: OmirosQuery<U>) throws -> [U] {
+    public func get<U: Omirable>(_ entityType: [U].Type = [U].self, where condition: OmirosQuery<U>.Condition) throws -> [U] {
+        let query = OmirosQuery(where: condition)
         return try entityType.init(in: statement!.db, with: query)
     }
 

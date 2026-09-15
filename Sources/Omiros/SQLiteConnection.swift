@@ -69,7 +69,7 @@ actor SQLiteConnectionToFile: SQLiteConnection {
         }
     }
 
-    func deleteFile() async throws {
+    func deleteFile() throws {
         dbForWriting = nil
 
         let path = try file.resolvePath()
@@ -110,28 +110,7 @@ actor SQLiteConnectionToFile: SQLiteConnection {
     }
 
     private static func isSQLiteFileReady(atPath path: String, fileManager: FileManager = .default) -> Bool {
-        guard fileManager.fileExists(atPath: path) else {
-            return false
-        }
-
-        guard let fileHandle = FileHandle(forReadingAtPath: path) else {
-            return false
-        }
-
-        defer {
-            try? fileHandle.close()
-        }
-
-        guard let headerData = try? fileHandle.read(upToCount: 20), headerData.count == 20 else {
-            return false
-        }
-
-        // Offset 18: File Format Write Version (1 = legacy, 2 = WAL)
-        // Offset 19: File Format Read Version (1 = legacy, 2 = WAL)
-        let writeVersion = headerData[18]
-        let readVersion = headerData[19]
-        let isWAL = writeVersion == 2 || readVersion == 2
-        return isWAL
+        return fileManager.fileExists(atPath: path)
     }
 
 }

@@ -55,12 +55,12 @@ public struct OmirableSaving<T: Omirable> {
         relations[key.stringValue] = (V.omirableName, relatedKey.stringValue)
     }
 
-    public mutating func set<U: Omirable>(_ entity: U, with query: OmirosQuery<U>? = nil) {
-        set([entity], with: query)
+    public mutating func set<U: Omirable>(_ entity: U, where condition: OmirosQuery<U>.Condition? = nil) {
+        set([entity], where: condition)
     }
 
-    public mutating func set<U: Omirable>(_ entities: [U], with query: OmirosQuery<U>? = nil) {
-        enclosed.append(EnclosedOmirableList(entities: entities, query: query))
+    public mutating func set<U: Omirable>(_ entities: [U], where condition: OmirosQuery<U>.Condition? = nil) {
+        enclosed.append(EnclosedOmirableList(entities: entities, condition: condition))
     }
 
 }
@@ -68,20 +68,44 @@ public struct OmirableSaving<T: Omirable> {
 // MARK: - EnclosedOmirableList
 
 protocol AnyEnclosedOmirableList {
+    var omirableName: String { get }
     func save(in db: SQLite) throws
+    mutating func append(_ other: AnyEnclosedOmirableList)
 }
 
 struct EnclosedOmirableList<T: Omirable>: AnyEnclosedOmirableList {
 
-    let entities: [T]
-    let query: OmirosQuery<T>?
+    var omirableName: String {
+        return T.omirableName
+    }
+
+    var entities: [T]
+    var condition: OmirosQuery<T>.Condition?
 
     func save(in db: SQLite) throws {
-        if let query = query {
-            try T.delete(in: db, with: query)
+        if let condition = condition {
+            try T.delete(in: db, with: OmirosQuery(where: condition))
         }
-
         try entities.save(in: db)
+    }
+
+    mutating func append(_ other: AnyEnclosedOmirableList) {
+        guard let other = other as? EnclosedOmirableList<T> else { return }
+
+        entities.append(contentsOf: other.entities)
+
+        if let otherCondition = other.condition {
+            var conditions: [OmirosQuery<T>.Condition]
+            switch condition {
+            case .any(let existingConditions):
+                conditions = existingConditions + [otherCondition]
+            case .none:
+                conditions = [otherCondition]
+            case .some(let existingCondition):
+                conditions = [existingCondition, otherCondition]
+            }
+            condition = .any(conditions)
+        }
     }
 
 }

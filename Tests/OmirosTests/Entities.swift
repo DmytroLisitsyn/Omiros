@@ -103,7 +103,7 @@ struct Owner: Omirable {
         self.init(id: try container.get(for: .id))
 
         name = try container.get(for: .name)
-        dogs = try container.get(with: .init(where: .equal(.ownerID, id)))
+        dogs = try container.get(where: .equal(.ownerID, id))
     }
 
     func fill(container: inout OmirableSaving<Owner>) {
@@ -111,7 +111,7 @@ struct Owner: Omirable {
 
         container.set(id, for: .id)
         container.set(name, for: .name)
-        container.set(dogs, with: .init(where: .equal(.ownerID, id)))
+        container.set(dogs, where: .equal(.ownerID, id))
     }
 
 }
